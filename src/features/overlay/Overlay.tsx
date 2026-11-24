@@ -16,7 +16,10 @@ import type { OverlayPosition } from './position';
 import { usePlayerSnapshot } from './use-player-snapshot';
 
 export type OverlayProps = {
-  /** Bottom (default) / center / top anchor inside the player rect. */
+  /**
+   * Bottom (default; switches to the 18%-gap Shorts anchor on `/shorts/`) /
+   * center / top / explicit Shorts anchor inside the player rect.
+   */
   position?: OverlayPosition;
   /**
    * Dictionary hookup owned by T12. Until it lands this is a no-op pass-through,
