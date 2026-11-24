@@ -1,0 +1,42 @@
+/* Options page styles: standalone extension page, so a normal document-level
+ * theme is fine. Preflight stays off project-wide (theme + utilities only). */
+@import "../content/style.css";
+
+/* The content stylesheet declares its design tokens on `:host` (shadow root).
+ * A standalone extension page has no shadow host, so mirror them on `:root`. */
+:root {
+  --ew-background: oklch(1 0 0);
+  --ew-foreground: oklch(0.145 0 0);
+  --ew-card: oklch(1 0 0);
+  --ew-card-foreground: oklch(0.145 0 0);
+  --ew-popover: oklch(1 0 0);
+  --ew-popover-foreground: oklch(0.145 0 0);
+  --ew-primary: oklch(0.205 0 0);
+  --ew-primary-foreground: oklch(0.985 0 0);
+  --ew-secondary: oklch(0.97 0 0);
+  --ew-secondary-foreground: oklch(0.205 0 0);
+  --ew-muted: oklch(0.97 0 0);
+  --ew-muted-foreground: oklch(0.556 0 0);
+  --ew-accent: oklch(0.97 0 0);
+  --ew-accent-foreground: oklch(0.205 0 0);
+  --ew-destructive: oklch(0.577 0.245 27.325);
+  --ew-border: oklch(0.922 0 0);
+  --ew-input: oklch(0.922 0 0);
+  --ew-ring: oklch(0.708 0 0);
+  --ew-radius: 0.625rem;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ew-background);
+  color: var(--ew-foreground);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans SC", sans-serif;
+}

@@ -1,0 +1,6 @@
+# pnpm 11 reads build-approval settings from this file.
+# esbuild is a build-time dependency of tsx/vitest tooling; allow its install
+# script so `pnpm install` is reproducible in clean checkouts.
+packages: []
+allowBuilds:
+  esbuild: true
