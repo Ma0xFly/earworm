@@ -1,0 +1,29 @@
+/* Standalone options page only: the Tailwind entry deliberately skips
+ * preflight (it is shared with the shadow-root content script), so restore the
+ * declarations the vendored shadcn controls assume. */
+.earworm-options,
+.earworm-options *,
+.earworm-options *::before,
+.earworm-options *::after {
+  box-sizing: border-box;
+}
+
+/* Zero specificity on the controls so Tailwind's `.border` utility, which is
+ * emitted later, still wins for inputs and outline buttons. */
+.earworm-options :where(button, input) {
+  border-width: 0;
+  border-style: solid;
+  font-family: inherit;
+}
+
+/* The vendored switch has no thumb shadow, which makes the unchecked light-on-
+ * light state hard to see on a standalone page. */
+.earworm-options [data-slot='switch'] {
+  border-color: var(--ew-border);
+}
+
+.earworm-options [data-slot='switch-thumb'] {
+  box-shadow:
+    0 0 0 1px var(--ew-border),
+    0 1px 2px rgb(0 0 0 / 0.18);
+}
