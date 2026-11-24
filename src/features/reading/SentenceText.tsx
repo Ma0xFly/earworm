@@ -5,14 +5,16 @@ import { normalizeWord, tokenizeWords, type TextToken } from '@/lib/text/tokeniz
 /**
  * Sentence renderer with clickable words and collocation highlighting.
  *
- * T1 scaffold: a small, working implementation that T6 replaces. Contract kept
- * for later tickets:
- * - `text` is rendered losslessly (`textContent === text`);
+ * Contract kept for overlay/sidebar/dictionary:
+ * - `text` is rendered losslessly (`textContent === text`), including original
+ *   spacing, punctuation, case and astral characters;
  * - the root carries `data-lang`;
  * - word tokens are `<span data-word="..." data-offset="...">` and call
- *   `onWordClick(surface, wordIndex, element)`;
- * - collocation ranges become `<mark data-collocation>`, never reordering or
- *   dropping characters.
+ *   `onWordClick(surface, wordIndex, element)`; `wordIndex` counts words only,
+ *   so it stays stable inside and outside marks;
+ * - collocation ranges become `<mark data-collocation="...">` wrapping their
+ *   original characters; overlapping spans are resolved before rendering, so a
+ *   mark never nests inside another and no character is duplicated or dropped.
  */
 export type SentenceTextProps = {
   text: string;
@@ -29,15 +31,28 @@ function clampSpan(span: CollocationSpan, text: string): CollocationSpan | null 
   return { ...span, start, end, text: text.slice(start, end) };
 }
 
+/**
+ * Clamp to the sentence, sort, and drop overlaps. Earlier (then longer) spans
+ * win; the runtime union already guarantees non-overlap, this is defence in
+ * depth for direct callers (overlay/sidebar) and malformed fixtures.
+ */
 function normalizeSpans(
   cols: readonly CollocationSpan[] | undefined,
   text: string,
 ): CollocationSpan[] {
   if (!cols || cols.length === 0) return [];
-  return cols
+  const sorted = cols
     .map((span) => clampSpan(span, text))
     .filter((span): span is CollocationSpan => span !== null)
-    .sort((a, b) => a.start - b.start || b.end - a.end);
+    .sort((left, right) => left.start - right.start || right.end - left.end);
+
+  const spans: CollocationSpan[] = [];
+  for (const span of sorted) {
+    const previous = spans[spans.length - 1];
+    if (previous && span.start < previous.end) continue;
+    spans.push(span);
+  }
+  return spans;
 }
 
 function wordClassName(interactive: boolean): string {
@@ -80,6 +95,20 @@ function renderToken(
   );
 }
 
+function renderTokenNode(
+  token: TextToken,
+  wordIndexRef: { current: number },
+  onWordClick: SentenceTextProps['onWordClick'],
+): ReactNode {
+  const node = renderToken(
+    token,
+    token.kind === 'word' ? wordIndexRef.current : -1,
+    onWordClick,
+  );
+  if (token.kind === 'word') wordIndexRef.current += 1;
+  return node;
+}
+
 export function SentenceText({
   text,
   cols,
@@ -92,21 +121,27 @@ export function SentenceText({
 
   const content = useMemo(() => {
     const nodes: ReactNode[] = [];
+    const wordIndex = { current: 0 };
     let index = 0;
-    let wordIndex = 0;
+    let spanIndex = 0;
 
     while (index < tokens.length) {
       const token = tokens[index];
       if (!token) break;
-      const span = spans.find(
-        (candidate) => token.start >= candidate.start && token.end <= candidate.end,
-      );
 
-      if (!span) {
-        nodes.push(
-          renderToken(token, token.kind === 'word' ? wordIndex : -1, onWordClick),
-        );
-        if (token.kind === 'word') wordIndex += 1;
+      // Skip spans that ended before this token; keep one that may cover it.
+      while (spanIndex < spans.length) {
+        const candidate = spans[spanIndex];
+        if (candidate && candidate.end > token.start) break;
+        spanIndex += 1;
+      }
+      const span = spans[spanIndex];
+
+      // A token only joins a mark when it is fully inside the span. Partial
+      // tokens at a boundary stay unmarked rather than being split, so word
+      // identity (surface and index) is never broken.
+      if (!span || token.start < span.start || token.end > span.end) {
+        nodes.push(renderTokenNode(token, wordIndex, onWordClick));
         index += 1;
         continue;
       }
@@ -115,15 +150,13 @@ export function SentenceText({
       while (index < tokens.length) {
         const current = tokens[index];
         if (!current || current.start < span.start || current.end > span.end) break;
-        marked.push(
-          renderToken(current, current.kind === 'word' ? wordIndex : -1, onWordClick),
-        );
-        if (current.kind === 'word') wordIndex += 1;
+        marked.push(renderTokenNode(current, wordIndex, onWordClick));
         index += 1;
       }
+
       nodes.push(
         <mark
-          key={`c-${span.start}`}
+          key={`c-${span.start}-${span.end}`}
           data-collocation={span.source}
           data-start={span.start}
           data-end={span.end}
