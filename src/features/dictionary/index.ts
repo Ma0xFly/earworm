@@ -1,1 +1,1 @@
-export { DictionaryPopup } from './DictionaryPopup';
+export { DictionaryPopup, openWord, closeDictionaryPopup } from './DictionaryPopup';
