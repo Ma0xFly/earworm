@@ -1,15 +1,19 @@
 import { createContext, createElement, useContext, useMemo, type ReactNode } from 'react';
+import { useSettings } from '@/lib/settings';
 import type { SessionApi, SessionState } from './types';
+import { useSessionEngine } from './useSessionEngine';
 
 /**
- * T1 no-op session provider.
+ * Session context for the content UI (T13).
  *
- * T13 replaces this implementation with the real transcript → sentences →
- * translation pipeline. The exported types, `SessionProvider` and `useSession`
- * stay stable.
+ * `SessionProvider` wires the React settings context to the session engine
+ * (`useSessionEngine`), which owns transcript acquisition, sentence merging,
+ * offline/LLM collocation union, translation batching, caching and sentence
+ * playback. The exported types, `SessionProvider` and `useSession` are stable
+ * across tickets; `idleSessionApi` remains the safe value outside a provider.
  */
 
-const INITIAL_STATE: SessionState = {
+export const idleSessionState: SessionState = {
   videoId: null,
   meta: null,
   status: 'idle',
@@ -19,11 +23,11 @@ const INITIAL_STATE: SessionState = {
 };
 
 const noop = (): void => {
-  // Intentionally empty until T13 lands the real orchestration.
+  // Intentionally empty: the no-provider default.
 };
 
 export const idleSessionApi: SessionApi = {
-  state: INITIAL_STATE,
+  state: idleSessionState,
   seekToSentence: noop,
   retrySentence: noop,
   retryAll: noop,
@@ -34,13 +38,28 @@ export const idleSessionApi: SessionApi = {
 const SessionContext = createContext<SessionApi>(idleSessionApi);
 
 export function SessionProvider({ children }: { children?: ReactNode }) {
+  const { settings, set } = useSettings();
+  const engine = useSessionEngine({ settings, setSettings: set });
+
   const api = useMemo<SessionApi>(
     () => ({
-      ...idleSessionApi,
-      state: { ...INITIAL_STATE, translation: { ...INITIAL_STATE.translation } },
+      state: engine.state,
+      seekToSentence: engine.seekToSentence,
+      retrySentence: engine.retrySentence,
+      retryAll: engine.retryAll,
+      setContinuous: engine.setContinuous,
+      toggleSidebar: engine.toggleSidebar,
     }),
-    [],
+    [
+      engine.state,
+      engine.seekToSentence,
+      engine.retrySentence,
+      engine.retryAll,
+      engine.setContinuous,
+      engine.toggleSidebar,
+    ],
   );
+
   return createElement(SessionContext.Provider, { value: api }, children);
 }
 
