@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useSession, type SessionStatus } from '@/features/session';
+import { isShortsHref } from '@/lib/transcript';
 import { installNativeCaptionSuppression } from '@/lib/ui/page-style';
 import {
   OverlayView,
@@ -23,6 +24,21 @@ export type OverlayProps = {
    */
   onWordClick?: OverlayWordClickHandler;
 };
+
+/**
+ * Shorts uses a separate vertical player whose action rail covers the bottom
+ * of the frame, so the default bottom preset becomes the 18%-gap Shorts
+ * anchor. An explicit center/top preset (playgrounds, future options) wins.
+ *
+ * Read at render time: YouTube SPA navigation re-renders through session state
+ * (and `useSpaStale`), so the preset follows a watch → Shorts → watch switch.
+ */
+function effectiveOverlayPosition(
+  requested: OverlayPosition | undefined,
+): OverlayPosition {
+  if (requested && requested !== 'bottom') return requested;
+  return isShortsHref(location.href) ? 'shorts' : 'bottom';
+}
 
 /**
  * Hide the previous video's sentence until the session reports the new one.
@@ -59,18 +75,19 @@ function useSpaStale(
  * are removed on teardown and no user caption settings are touched.
  */
 export function Overlay({
-  position = 'bottom',
+  position,
   onWordClick,
 }: OverlayProps = {}) {
   const { state, retryAll } = useSession();
-  const player = usePlayerSnapshot(position);
+  const resolvedPosition = effectiveOverlayPosition(position);
+  const player = usePlayerSnapshot(resolvedPosition);
   const stale = useSpaStale(state.videoId, state.status);
 
   useEffect(() => installNativeCaptionSuppression(), []);
 
   const viewProps: OverlayViewProps = {
     state,
-    position,
+    position: resolvedPosition,
     adPlaying: player.adPlaying,
     stale,
     liftPx: player.liftPx,

@@ -17,6 +17,7 @@ import { useCallback, useRef, type CSSProperties, type SyntheticEvent } from 're
 import { PanelRightClose, XIcon } from 'lucide-react';
 import { useSession, type TranslationProgress } from '@/features/session';
 import { useSettings } from '@/lib/settings';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { SentenceRow } from './SentenceRow';
 import { computeSidebarLayout } from './selectors';
@@ -69,7 +70,8 @@ const HEADER_ICON_BUTTON =
   'inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50';
 
 export function Sidebar() {
-  const { state, seekToSentence, retrySentence, retryAll } = useSession();
+  const { state, seekToSentence, retrySentence, retryAll, setContinuous } =
+    useSession();
   const { settings, set } = useSettings();
   const environment = useSidebarEnvironment();
   const layout = computeSidebarLayout(environment);
@@ -141,6 +143,22 @@ export function Sidebar() {
         <h2 className="shrink-0 text-sm font-semibold">字幕</h2>
         <TranslationStatus progress={state.translation} />
         <div className="ml-auto flex items-center gap-1">
+          {/* Spec F3: continuous playback must be reachable from the sidebar. */}
+          <span className="flex items-center gap-1">
+            <span
+              aria-hidden
+              className="hidden text-xs text-muted-foreground sm:inline"
+            >
+              连续
+            </span>
+            <Switch
+              size="sm"
+              aria-label="连续播放"
+              title="连续播放：开启后当前句播完自动进入下一句"
+              checked={settings.playback.continuous}
+              onCheckedChange={setContinuous}
+            />
+          </span>
           {state.translation.failed > 0 ? (
             <button
               type="button"

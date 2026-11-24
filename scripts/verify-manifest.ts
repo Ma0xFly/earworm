@@ -65,6 +65,20 @@ export function manifestProblems(outputDir: string): string[] {
     for (const file of mainJs) {
       if (!fileExists(file)) problems.push(`content script file missing from build: ${file}`);
     }
+
+    // MAIN-world scripts cannot use `chrome.*` (the API is isolated-world
+    // only). T3 verified this by hand; keep it asserted in the build gate.
+    const injectPath = path.join(outputDir, 'inject.js');
+    if (!existsSync(injectPath)) {
+      problems.push('inject.js missing from build');
+    } else {
+      const injectSource = readFileSync(injectPath, 'utf8');
+      if (/\bchrome\s*\./.test(injectSource)) {
+        problems.push(
+          'MAIN-world inject.js must not reference chrome.* (chrome APIs are unavailable in the MAIN world)',
+        );
+      }
+    }
   }
 
   const isolated = contentScripts.find(
@@ -123,6 +137,14 @@ export function manifestProblems(outputDir: string): string[] {
   }
   if (!fileExists('data/README.md')) {
     problems.push('public/data/README.md was not copied into the build output');
+  }
+
+  // Attribution must ship with the distributed extension package, not only in
+  // the source repository (WXT copies these via the build:publicAssets hook).
+  for (const file of ['LICENSE', 'NOTICE']) {
+    if (!fileExists(file)) {
+      problems.push(`attribution file missing from the build output: ${file}`);
+    }
   }
 
   return problems;

@@ -27,8 +27,16 @@ WXT 0.21（MV3）+ React 19 + TypeScript + Tailwind CSS v4 + shadcn/ui（Radix�
 pnpm install
 pnpm dev          # WXT 开发模式（自动打开浏览器并加载扩展）
 pnpm typecheck    # wxt prepare + tsc --noEmit
-pnpm test         # Vitest 单元测试（不联网）
+pnpm test         # Vitest 单元 + 集成测试（不联网）
 pnpm build        # 生产构建，产物在 .output/chrome-mv3
+```
+
+提交前完整门禁：
+
+```bash
+pnpm install --frozen-lockfile
+pnpm typecheck && pnpm test && pnpm build
+node scripts/audit-attribution.mjs
 ```
 
 开发时 UI 全部渲染在一个 body 级 shadow root 中，与 YouTube 页面样式互相隔离；
@@ -41,6 +49,10 @@ Tailwind 的 preflight 被刻意关闭（只引入 theme + utilities），避免
 3. 打开右上角「开发者模式」，点击「加载已解压的扩展程序」。
 4. 选择 `.output/chrome-mv3`。
 5. 打开任意有**人工英文字幕**的 YouTube 视频，扩展会挂载字幕 overlay 和右侧列表。
+
+完整手工验收步骤、候选视频、逐项预期与结果记录见
+[`docs/acceptance.md`](./docs/acceptance.md)；端到端 mock 测试在
+`tests/acceptance.test.tsx`（`pnpm vitest run tests/acceptance.test.tsx`）。
 
 ### 设置
 
@@ -100,7 +112,12 @@ pnpm build:collocations
 
 ### Playground（T14）
 
-`pnpm playground` 预留为离线 playground 的启动脚本；对应目录由 T14 提供。
+离线调试环境位于 [`playground/`](./playground/)，以 mock 字幕/翻译数据驱动完整 UI，
+不访问 YouTube 或 LLM。启动方式见 [`playground/README.md`](./playground/README.md)：
+
+```bash
+pnpm playground
+```
 
 ## 目录结构
 
@@ -116,6 +133,13 @@ scripts/              数据构建脚本
 tests/                Vitest 测试
 playground/           离线调试环境（T14 实现）
 ```
+
+## 验收
+
+- 自动化：`pnpm typecheck && pnpm test && pnpm build`，以及
+  `node scripts/audit-attribution.mjs`（归属合规）。
+- 真实 YouTube 手工验收：按 [`docs/acceptance.md`](./docs/acceptance.md) 的 §7 清单执行，
+  包含无字幕视频、同视频二次打开零 LLM 请求、magpie 端点日志与 MIT/CC-BY 归属检查。
 
 ## 许可
 

@@ -159,11 +159,11 @@ node scripts/audit-attribution.mjs  PASS — 66/66 checks
 5. **数据再生成**：`pnpm build:ecdict` / `pnpm build:collocations` 依赖本地
    gitignored 输入；CI 若没有输入文件，应跳过数据重建并校验已提交生成物，
    而不是静默生成空表。
-6. **发布包未包含 NOTICE/LICENSE**：WXT 构建产物 `.output/chrome-mv3` 目前
-   只复制 `public/` 与入口产物，根目录的 `NOTICE` / `LICENSE` 不在包内。
-   源码仓库分发的归属是完整的；但若把商店安装包视为独立副本，MIT/CC-BY
-   要求随包附上声明。本 ticket 不改 `wxt.config.ts` / `package.json`，建议
-   T16 在构建配置中把这两个文件复制进产物，或在发布说明中附上仓库链接。
+6. **发布包未包含 NOTICE/LICENSE（T16 已修复）**：WXT 构建产物
+   `.output/chrome-mv3` 目前通过 `wxt.config.ts` 的 `build:publicAssets` hook
+   把根目录 `LICENSE` / `NOTICE` 复制到扩展根目录；`scripts/verify-manifest.ts`
+   与 `tests/manifest.test.ts` 会断言两者存在。发行时仍需确认商店包完整保留
+   这两个文件（部分商店会剔除未知文件）。
 7. **范围偏差（已记录）**：`src/lib/ui/page-style.ts` 与
    `src/features/sidebar/*` 不在本 ticket 最初列出的目录清单中，但它们是实际
    adapted 文件；本次只补/规范了顶部版权注释，没有改逻辑。新增

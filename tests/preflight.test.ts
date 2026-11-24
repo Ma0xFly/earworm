@@ -40,6 +40,42 @@ describe('shadow-root stylesheet', () => {
     expect(cssText).not.toContain('.ytp-caption-window-container');
   });
 
+  it('ships the scoped base layer preflight would otherwise provide', () => {
+    // Tailwind preflight is off, so the shadow sheet itself must restore
+    // border-box sizing and drop the UA border/background for form controls.
+    expect(cssText).toMatch(
+      /\*,\s*::before,\s*::after\s*\{[^}]*box-sizing:\s*border-box/,
+    );
+    expect(cssText).toMatch(
+      /button,\s*input,\s*select,\s*textarea\s*\{[^}]*border:\s*0 solid[^}]*background:\s*transparent/,
+    );
+
+    // Host-page state that the reset must never touch.
+    document.body.style.margin = '9px';
+    document.body.style.border = '3px solid rgb(1, 2, 3)';
+
+    const ui = createShadowUi({ css: cssText });
+    ui.mount();
+
+    const button = document.createElement('button');
+    button.textContent = 'control';
+    ui.container.appendChild(button);
+
+    // The reset wins over the UA control styles inside the shadow tree...
+    expect(getComputedStyle(button).boxSizing).toBe('border-box');
+    expect(getComputedStyle(button).borderTopWidth).toBe('0px');
+    expect(getComputedStyle(button).backgroundColor).toBe('transparent');
+
+    // ...and stops at the shadow boundary: YouTube keeps its own control reset.
+    expect(document.body.style.margin).toBe('9px');
+    expect(document.body.style.border).toBe('3px solid rgb(1, 2, 3)');
+    expect(getComputedStyle(document.body).borderTopWidth).toBe('3px');
+
+    ui.unmount();
+    document.body.style.margin = '';
+    document.body.style.border = '';
+  });
+
   it('injecting the real compiled stylesheet does not reset the host page', () => {
     document.body.style.margin = '9px';
     document.body.style.padding = '7px';
