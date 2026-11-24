@@ -54,34 +54,49 @@ Tailwind 的 preflight 被刻意关闭（只引入 theme + utilities），避免
 API key 只保存在 `chrome.storage.local`，不会写入 `storage.sync`、日志或 URL。
 非 localhost 的自定义端点会在保存时按需申请 host 权限。
 
-## 数据构建
+## 数据来源与重建
 
 离线数据生成物提交在 `public/data/`，扩展运行时通过
 `chrome.runtime.getURL('data/<file>')` 读取，并注册为 `web_accessible_resources`。
+原始输入文件位于 gitignored 的 `data/`，不入库；下表给出每个生成物的来源、许可与
+重建命令。完整归属与许可见 [`NOTICE`](./NOTICE)，逐文件审计记录见
+[`docs/compliance.md`](./docs/compliance.md)。
+
+| 生成物 | 来源 | 许可 / 署名 | 重建 |
+| --- | --- | --- | --- |
+| `public/data/ecdict.json`、`public/data/lemmas.json` | [skywind3000/ECDICT](https://github.com/skywind3000/ECDICT) | MIT（Copyright (c) 2025 Linwei；上游数据逐条出处存在第三方署名歧义，见 NOTICE） | `pnpm build:ecdict` |
+| `public/data/collocations.json` | [vladvlasov256/opensubs-collocations](https://huggingface.co/datasets/vladvlasov256/opensubs-collocations) | CC-BY 4.0；OpenSubtitles, Lison & Tiedemann 2016 | `pnpm build:collocations` |
 
 ### ECDICT 词典（T5）
 
-输入：`data/ecdict.csv`（63MB，来自 [skywind3000/ECDICT](https://github.com/skywind3000/ECDICT)）
-与 `data/lemma.en.txt`。输入文件不入库。
+输入：`data/ecdict.csv`（63MB）与 `data/lemma.en.txt`，来自
+[skywind3000/ECDICT](https://github.com/skywind3000/ECDICT)（MIT，
+Copyright (c) 2025 Linwei）。输入文件不入库。
 
 ```bash
 pnpm build:ecdict
 ```
 
 环境变量 `ECDICT_CSV` / `LEMMA_TXT` 可覆盖默认路径。生成
-`public/data/ecdict.json` 与 `public/data/lemmas.json`。
+`public/data/ecdict.json` 与 `public/data/lemmas.json`。ECDICT 数据由多个上游
+词典与词表汇编而成，仓库 LICENSE 为 MIT，但个别上游内容的署名条款未逐条列明；
+本仓库按 MIT 分发裁剪后的生成物，并在 `NOTICE` 中保留该出处歧义说明。
 
 ### OpenSubtitles 搭配表（T6）
 
-输入：`data/en.jsonl`（来自
-[vladvlasov256/opensubs-collocations](https://huggingface.co/datasets/vladvlasov256/opensubs-collocations)，
-CC-BY 4.0，署名 OpenSubtitles, Lison & Tiedemann 2016）。
+输入：`data/en.jsonl`，来自
+[vladvlasov256/opensubs-collocations](https://huggingface.co/datasets/vladvlasov256/opensubs-collocations)
+（CC-BY 4.0）。输入文件不入库。
 
 ```bash
 pnpm build:collocations
 ```
 
-环境变量 `OPENSUBS_JSONL` 可覆盖默认路径。生成 `public/data/collocations.json`。
+环境变量 `OPENSUBS_JSONL` 可覆盖默认路径。生成 `public/data/collocations.json`，
+其 `meta` 字段记录来源 URL、许可与署名。使用该数据时请保留以下署名：
+
+> OpenSubtitles；Pierre Lison and Jörg Tiedemann. 2016. *OpenSubtitles2016:
+> Extracting Large Parallel Corpora from Movie and TV Subtitles.* LREC 2016.
 
 ### Playground（T14）
 
@@ -104,4 +119,7 @@ playground/           离线调试环境（T14 实现）
 
 ## 许可
 
-MIT，见 [`LICENSE`](./LICENSE)。第三方来源与数据署名见 [`NOTICE`](./NOTICE)。
+Earworm 以 MIT 发布，见 [`LICENSE`](./LICENSE)。被 copy/adapt 的第三方 MIT
+代码在文件头保留版权与来源，完整许可文本、数据署名与依赖说明见
+[`NOTICE`](./NOTICE)；逐文件审计与残余风险见
+[`docs/compliance.md`](./docs/compliance.md)。

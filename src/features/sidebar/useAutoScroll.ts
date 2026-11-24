@@ -4,9 +4,11 @@
  *
  * Interaction adapted from the easysubs transcript sidebar: a manual scroll
  * pauses auto-follow for five seconds; scrolling the current row back into
- * view resumes it immediately. Adapted from easysubs
- * (https://github.com/Nitrino/easysubs), Copyright (c) 2022 Seo Jong Hak,
- * MIT License — see NOTICE.
+ * view resumes it immediately.
+ *
+ * Adapted for Earworm (MIT) from Nitrino/easysubs (MIT) — Copyright (c) 2022 Seo Jong Hak.
+ * Upstream: https://github.com/Nitrino/easysubs (transcript auto-scroll behaviour).
+ * Full upstream MIT permission text: see NOTICE.
  */
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
