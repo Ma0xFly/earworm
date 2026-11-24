@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { manifestProblems } from '../scripts/verify-manifest';
@@ -31,5 +31,14 @@ describe('built extension manifest', () => {
 
   it('ships the public data directory into the unpacked extension', () => {
     expect(existsSync(path.join(outputDir, 'data', 'README.md'))).toBe(true);
+  });
+
+  it('ships attribution and keeps the MAIN-world inject script chrome-free', () => {
+    for (const file of ['LICENSE', 'NOTICE']) {
+      expect(existsSync(path.join(outputDir, file)), file).toBe(true);
+    }
+
+    const inject = readFileSync(path.join(outputDir, 'inject.js'), 'utf8');
+    expect(inject).not.toMatch(/\bchrome\s*\./);
   });
 });

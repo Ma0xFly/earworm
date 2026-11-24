@@ -15,7 +15,7 @@
  * Keeping this module DOM-free makes normal/theater/fullscreen behavior
  * testable without a real YouTube player.
  */
-export type OverlayPosition = 'bottom' | 'center' | 'top';
+export type OverlayPosition = 'bottom' | 'center' | 'top' | 'shorts';
 
 export type OverlayRect = {
   left: number;
@@ -29,6 +29,13 @@ export const BOTTOM_GAP_RATIO = 0.08;
 
 /** Top preset sits this fraction of the player height below its top. */
 export const TOP_GAP_RATIO = 0.08;
+
+/**
+ * Shorts' own action rail/description covers roughly the bottom 18% of the
+ * vertical player, so the bilingual line anchors above it instead of the
+ * regular 8% caption gap.
+ */
+export const SHORTS_BOTTOM_GAP_RATIO = 0.18;
 
 /** Native captions rise at most this far while the control bar is visible. */
 export const MAX_CONTROLS_LIFT_PX = 160;
@@ -127,6 +134,13 @@ export function computeOverlayAnchor(
         left: CENTERED_LEFT,
         top: `calc(var(--ew-player-top) + var(--ew-player-height) * ${TOP_GAP_RATIO})`,
         transform: 'translate(-50%, 0)',
+      };
+    case 'shorts':
+      return {
+        left: CENTERED_LEFT,
+        // 0.82 literals avoid the 1 - 0.18 floating-point tail in the CSS string.
+        top: 'calc(var(--ew-player-top) + var(--ew-player-height) * 0.82)',
+        transform: 'translate(-50%, -100%)',
       };
     case 'bottom':
     default:

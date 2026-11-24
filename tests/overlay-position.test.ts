@@ -5,6 +5,7 @@ import {
   MAX_FONT_SIZE_PX,
   MAX_WIDTH_PX,
   MIN_FONT_SIZE_PX,
+  SHORTS_BOTTOM_GAP_RATIO,
   computeControlsLift,
   computeFontSizePx,
   computeMaxWidthPx,
@@ -32,6 +33,26 @@ describe('overlay position engine', () => {
     const top = computeOverlayAnchor('top');
     expect(top.top).toContain('* 0.08');
     expect(top.transform).toBe('translate(-50%, 0)');
+  });
+
+  it('anchors the Shorts preset above its 18% bottom action rail', () => {
+    const anchor = computeOverlayAnchor('shorts');
+    expect(anchor.left).toBe('calc(var(--ew-player-left) + var(--ew-player-width) / 2)');
+    expect(anchor.top).toBe(
+      'calc(var(--ew-player-top) + var(--ew-player-height) * 0.82)',
+    );
+    expect(anchor.transform).toBe('translate(-50%, -100%)');
+    expect(SHORTS_BOTTOM_GAP_RATIO).toBe(0.18);
+
+    // The control-bar lift only exists for the regular bottom preset.
+    expect(
+      computeControlsLift({
+        preset: 'shorts',
+        playerRect: player,
+        controlsRect: { left: 0, top: 740, width: 1000, height: 40 },
+        controlsVisible: true,
+      }),
+    ).toBe(0);
   });
 
   it('subtracts the control-bar lift from the bottom anchor', () => {

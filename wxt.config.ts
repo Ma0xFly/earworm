@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { defineConfig } from 'wxt';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -35,6 +36,19 @@ export default defineConfig({
         all_frames: false,
       },
     ],
+  },
+  // WXT copies only `public/` into the unpacked extension. MIT/CC-BY
+  // attribution must travel with the distributed copy, so ship the repository
+  // LICENSE + NOTICE at the extension root as additional public assets.
+  hooks: {
+    'build:publicAssets'(_wxt, files) {
+      for (const name of ['LICENSE', 'NOTICE']) {
+        files.push({
+          relativeDest: name,
+          absoluteSrc: path.resolve(process.cwd(), name),
+        });
+      }
+    },
   },
   vite: () => ({
     plugins: [tailwindcss()],

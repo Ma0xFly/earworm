@@ -66,7 +66,11 @@ function SentenceRowImpl({ sentence, isCurrent, onSeek, onRetry }: SentenceRowPr
       )}
     >
       <p className="text-sm leading-snug text-foreground">
-        <SentenceText text={sentence.text} lang="en" />
+        <SentenceText
+          text={sentence.text}
+          cols={sentence.cols}
+          lang="en"
+        />
       </p>
 
       {sentence.status === 'done' && sentence.zh ? (

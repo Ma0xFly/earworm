@@ -163,6 +163,9 @@ export function publishPlayerRect(host: HTMLElement, rect: PlayerRect | null): v
 export function getPlayerElement(): Element | null {
   return (
     document.querySelector('#movie_player') ??
+    // Shorts renders a separate vertical player instead of #movie_player; the
+    // overlay/sidebar geometry must follow it on /shorts/<id> pages.
+    document.querySelector('#shorts-player') ??
     document.querySelector('video.html5-main-video') ??
     document.querySelector('video')
   );

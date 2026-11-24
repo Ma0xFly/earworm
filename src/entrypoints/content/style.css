@@ -11,6 +11,31 @@
 @import "tailwindcss/utilities.css";
 @import "tw-animate-css";
 
+/*
+ * Scoped base layer (preflight is intentionally disabled, so Tailwind does not
+ * provide one). This sheet is injected into the shadow root only; `*` matches
+ * shadow-tree descendants, NEVER the host page, so it cannot reset YouTube.
+ *
+ * Keep an element-selector reset only: Tailwind utilities are class selectors
+ * and therefore win the cascade, exactly as they would over preflight. Do not
+ * add `!important` or a `:where()` wrapper here without re-checking shadcn
+ * controls — the point is to restore `border-box` sizing and drop the UA
+ * button/input border/background so Radix + shadcn controls align.
+ */
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+  border: 0 solid;
+  background: transparent;
+}
+
 /* Scan the whole src tree for utility class candidates. */
 @source "../../";
 

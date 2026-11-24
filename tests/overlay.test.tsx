@@ -68,6 +68,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   document.querySelector('#movie_player')?.remove();
+  window.history.replaceState({}, '', '/');
 });
 
 describe('bilingual overlay content', () => {

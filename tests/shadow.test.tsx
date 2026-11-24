@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createShadowUi,
+  getPlayerElement,
   publishPlayerRect,
   readPlayerRect,
   startPlayerRectSync,
@@ -57,6 +58,27 @@ describe('shadow DOM host', () => {
     ui.unmount();
     document.body.style.margin = '';
     document.body.style.background = '';
+  });
+
+  it('prefers the watch player and recognizes the Shorts player', () => {
+    const movie = document.createElement('div');
+    movie.id = 'movie_player';
+    const shorts = document.createElement('div');
+    shorts.id = 'shorts-player';
+    const video = document.createElement('video');
+    document.body.append(movie, shorts, video);
+
+    // Watch page: #movie_player wins even if a Shorts node is left behind.
+    expect(getPlayerElement()).toBe(movie);
+
+    movie.remove();
+    expect(getPlayerElement()).toBe(shorts);
+
+    shorts.remove();
+    expect(getPlayerElement()).toBe(video);
+
+    video.remove();
+    expect(getPlayerElement()).toBeNull();
   });
 
   it('exposes container and portal nodes inside the shadow root', () => {
