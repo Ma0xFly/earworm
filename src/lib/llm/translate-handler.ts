@@ -1,23 +1,103 @@
 import type { MessageRouter } from '@/lib/messages';
+import { loadSettings } from '@/lib/settings';
+import { translateBatch } from './batch';
+import {
+  clearTranslationCache,
+  commitTranslation,
+  getCachedTranslation,
+} from './cache';
+import { requestChatCompletion } from './client';
+import { buildPromptMessages } from './prompt';
 
 /**
- * Background translation handlers (T1 stub).
+ * Background translation handlers.
  *
- * T4 replaces this file with the real OpenAI-compatible batch translation
- * pipeline and IndexedDB cache. `registerTranslationHandlers(router)` is the
- * only entrypoint the background service worker imports, so the signature
- * must stay stable.
+ * `registerTranslationHandlers(router)` is the only entrypoint the background
+ * service worker imports; every handler catches its own failures so a bad
+ * request can never reject into the worker event loop.
  */
+
+/** The connection test is interactive; do not make the options page wait 2 min. */
+const TEST_LLM_TIMEOUT_MS = 30_000;
+const TEST_SAMPLE_MAX_CHARS = 240;
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.length > 0) return error.message;
+  return String(error);
+}
+
+function truncateSample(content: string): string {
+  const normalized = content.trim();
+  if (normalized.length <= TEST_SAMPLE_MAX_CHARS) return normalized;
+  return `${normalized.slice(0, TEST_SAMPLE_MAX_CHARS - 1)}…`;
+}
+
 export function registerTranslationHandlers(router: MessageRouter): void {
-  router.register('earworm:get-cached', () => ({ hit: false }));
-  router.register('earworm:translate-batch', () => ({
-    ok: false,
-    error: 'LLM translation is not implemented yet (ticket T4)',
-  }));
-  router.register('earworm:commit', () => ({ ok: true }));
-  router.register('earworm:test-llm', () => ({
-    ok: false,
-    error: 'LLM connection test is not implemented yet (ticket T4)',
-  }));
-  router.register('earworm:clear-cache', () => ({ ok: true }));
+  router.register('earworm:get-cached', async (request) => {
+    if (request.type !== 'earworm:get-cached') return { hit: false };
+    try {
+      const data = await getCachedTranslation(request.videoId, request.cuesHash);
+      return data ? { hit: true, data } : { hit: false };
+    } catch {
+      // A cache failure must degrade to a miss, not block translation.
+      return { hit: false };
+    }
+  });
+
+  router.register('earworm:translate-batch', async (request) => {
+    if (request.type !== 'earworm:translate-batch') {
+      return { ok: false, error: 'Unexpected request type' };
+    }
+    try {
+      const settings = await loadSettings();
+      return await translateBatch({
+        meta: request.meta,
+        items: request.batch,
+        settings: settings.llm,
+      });
+    } catch (error) {
+      return { ok: false, error: errorMessage(error) };
+    }
+  });
+
+  router.register('earworm:commit', async (request) => {
+    if (request.type !== 'earworm:commit') {
+      return { ok: false, error: 'Unexpected request type' };
+    }
+    try {
+      await commitTranslation(request.videoId, request.cuesHash, request.data);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: errorMessage(error) };
+    }
+  });
+
+  router.register('earworm:test-llm', async (request) => {
+    if (request.type !== 'earworm:test-llm') {
+      return { ok: false, error: 'Unexpected request type' };
+    }
+    try {
+      const messages = buildPromptMessages(
+        { videoId: 'connection-test', title: 'Earworm connection test', channel: 'Earworm' },
+        [{ i: 0, text: 'Hello there, this is a quick connection test.' }],
+      );
+      const { content } = await requestChatCompletion({
+        settings: request.llm,
+        messages,
+        timeoutMs: TEST_LLM_TIMEOUT_MS,
+      });
+      return { ok: true, sample: truncateSample(content) };
+    } catch (error) {
+      return { ok: false, error: errorMessage(error) };
+    }
+  });
+
+  router.register('earworm:clear-cache', async () => {
+    try {
+      await clearTranslationCache();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: errorMessage(error) };
+    }
+  });
 }
