@@ -153,6 +153,28 @@ export function vidOfUrl(url: string, pageHref?: string): string {
   return u?.searchParams.get('v') || videoIdFromHref(pageBase(pageHref));
 }
 
+/**
+ * The descriptor passed to the player's `setOption('captions', 'track', …)`.
+ *
+ * `languageCode` alone is ambiguous when YouTube lists both a human track and
+ * an auto-generated one for the same language; include the track's own `kind`
+ * and `vssId` when present so the player selects the exact manual track.
+ */
+export type CaptionTrackDescriptor = {
+  languageCode: string;
+  kind?: string;
+  vssId?: string;
+};
+
+export function captionTrackDescriptor(track: CaptionTrack): CaptionTrackDescriptor {
+  const descriptor: CaptionTrackDescriptor = {
+    languageCode: String(track.languageCode || 'en'),
+  };
+  if (typeof track.kind === 'string' && track.kind) descriptor.kind = track.kind;
+  if (typeof track.vssId === 'string' && track.vssId) descriptor.vssId = track.vssId;
+  return descriptor;
+}
+
 /** Whether a `captionTracks[]` entry is a human English track. */
 export function isManualEnglishTrack(track: CaptionTrack): boolean {
   return baseLang(track.languageCode) === 'en' && track.kind !== 'asr';

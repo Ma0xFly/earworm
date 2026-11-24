@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   baseLang,
   buildUrl,
+  captionTrackDescriptor,
   classifyCapturedTrack,
   classifyHttpStatus,
   hasTlang,
@@ -140,6 +141,21 @@ describe('manual English track selection', () => {
     expect(selectEnglishTrack(undefined)).toEqual({ kind: 'no-captions' });
     expect(selectEnglishTrack([])).toEqual({ kind: 'no-captions' });
     expect(selectEnglishTrack([manualEs])).toEqual({ kind: 'no-captions' });
+  });
+
+  it('builds an unambiguous player track descriptor', () => {
+    expect(captionTrackDescriptor({ languageCode: 'en', vssId: '.en' })).toEqual({
+      languageCode: 'en',
+      vssId: '.en',
+    });
+    expect(captionTrackDescriptor({ languageCode: 'en', kind: 'asr', vssId: 'a.en' })).toEqual({
+      languageCode: 'en',
+      kind: 'asr',
+      vssId: 'a.en',
+    });
+    expect(captionTrackDescriptor({ languageCode: 'en-GB', kind: '' })).toEqual({
+      languageCode: 'en-GB',
+    });
   });
 
   it('classifies a captured URL into manual-en / asr / other', () => {

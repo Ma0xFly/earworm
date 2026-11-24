@@ -32,6 +32,7 @@ import type { TranscriptFailureReason } from '@/lib/transcript/client';
 import {
   baseLang,
   buildUrl,
+  captionTrackDescriptor,
   classifyCapturedTrack,
   classifyHttpStatus,
   hasTlang,
@@ -509,7 +510,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
           if (videoId !== currentVid() || sourceUrl) return;
           const current = activePlayer();
           if (current && typeof current.setOption === 'function') {
-            current.setOption('captions', 'track', { languageCode: track.languageCode });
+            current.setOption('captions', 'track', captionTrackDescriptor(track));
           }
         } catch {
           /* ignore */
