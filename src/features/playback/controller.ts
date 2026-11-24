@@ -1,13 +1,12 @@
 /**
  * Player controller: sentence-range playback on the YouTube `<video>`.
  *
- * Adapted for Earworm (MIT) from:
- * - easysubs (https://github.com/Nitrino/easysubs), Copyright (c) 2022 Seo
- *   Jong Hak, MIT License — sentence-start previous/repeat/next seeking
- *   semantics.
- * - SceneLingo (https://github.com/umutgokbulak/SceneLingo), Copyright (c)
- *   2026 Umut, MIT License — per-range latch / rAF auto-pause pattern.
- * See `NOTICE` for the full third-party notice.
+ * Adapted for Earworm (MIT) from Nitrino/easysubs (MIT) — Copyright (c) 2022 Seo Jong Hak.
+ * Adapted for Earworm (MIT) from umutgokbulak/SceneLingo (MIT) — Copyright (c) 2026 Umut.
+ * Upstream: https://github.com/Nitrino/easysubs and https://github.com/umutgokbulak/SceneLingo
+ * (easysubs: sentence-start previous/repeat/next seeking semantics; SceneLingo:
+ * per-range latch / rAF auto-pause pattern).
+ * Full upstream MIT permission texts: see NOTICE.
  *
  * Behaviour:
  * - rAF is the primary clock; `timeupdate` is the fallback when frames are

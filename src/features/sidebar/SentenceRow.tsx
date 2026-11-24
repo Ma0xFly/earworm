@@ -3,9 +3,9 @@
  * subtitle line, `data-id` hook, role=button + Enter/Space seek, and a
  * stop-propagation wrapper so player clicks are not affected.
  *
- * Adapted from easysubs (https://github.com/Nitrino/easysubs)
- * Copyright (c) 2022 Seo Jong Hak
- * MIT License — see NOTICE.
+ * Adapted for Earworm (MIT) from Nitrino/easysubs (MIT) — Copyright (c) 2022 Seo Jong Hak.
+ * Upstream: https://github.com/Nitrino/easysubs (transcript row behaviour).
+ * Full upstream MIT permission text: see NOTICE.
  */
 import { memo, type KeyboardEvent, type MouseEvent } from 'react';
 import type { LearningSentence } from '@/lib/contracts';

@@ -7,9 +7,11 @@
  * closable right drawer.
  *
  * Panel event isolation (stop player click/wheel/key bubbling) follows the
- * easysubs transcript panel. Adapted from easysubs
- * (https://github.com/Nitrino/easysubs), Copyright (c) 2022 Seo Jong Hak,
- * MIT License — see NOTICE.
+ * easysubs transcript panel.
+ *
+ * Adapted for Earworm (MIT) from Nitrino/easysubs (MIT) — Copyright (c) 2022 Seo Jong Hak.
+ * Upstream: https://github.com/Nitrino/easysubs (transcript panel event isolation).
+ * Full upstream MIT permission text: see NOTICE.
  */
 import { useCallback, useRef, type CSSProperties, type SyntheticEvent } from 'react';
 import { PanelRightClose, XIcon } from 'lucide-react';

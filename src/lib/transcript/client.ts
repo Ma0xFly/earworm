@@ -1,9 +1,8 @@
 /**
- * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs v3.7.0
- * (content.js `onInjectMessage`, `sendConfig`, `onNav`; `videoIdFromLocation`).
- * Copyright (c) 2026 Gythiro — MIT License (see NOTICE).
- * Upstream: https://github.com/Gythiro/yt-dual-subs
- * Adapted: 2026-11-24.
+ * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs (MIT) — Copyright (c) 2026 Gythiro.
+ * Upstream: https://github.com/Gythiro/yt-dual-subs (v3.7.0: content.js
+ * `onInjectMessage`, `sendConfig`, `onNav`; `videoIdFromLocation`).
+ * Adapted: 2026-11-24. Full upstream MIT permission text: see NOTICE.
  *
  * Isolated-world transcript client: listens to the validated window bridge,
  * requests cues on start and after every YouTube SPA navigation, drops stale

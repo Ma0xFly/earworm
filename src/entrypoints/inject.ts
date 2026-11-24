@@ -1,8 +1,7 @@
 /**
- * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs v3.7.0 (inject.js).
- * Copyright (c) 2026 Gythiro — MIT License (see NOTICE).
- * Upstream: https://github.com/Gythiro/yt-dual-subs
- * Adapted: 2026-11-24.
+ * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs (MIT) — Copyright (c) 2026 Gythiro.
+ * Upstream: https://github.com/Gythiro/yt-dual-subs (v3.7.0, inject.js).
+ * Adapted: 2026-11-24. Full upstream MIT permission text: see NOTICE.
  *
  * MAIN world, document_start. Hooks XMLHttpRequest + fetch (with a
  * PerformanceObserver fallback) to capture the YouTube player's OWN
