@@ -131,7 +131,7 @@ OpenSubtitles 引用（同时写入 `NOTICE` 与 README）：
 
 ```text
 pnpm typecheck  PASS
-pnpm test       PASS — 49 files / 429 tests
+pnpm test       PASS — 55 files / 495 tests
 pnpm build      PASS — .output/chrome-mv3（6.84 MB，manifest verify OK）
 node scripts/audit-attribution.mjs  PASS — 66/66 checks
 ```
