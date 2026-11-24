@@ -46,7 +46,7 @@ function TranslationStatus({ progress }: { progress: TranslationProgress }) {
       data-translation-progress
       role="status"
       aria-live="polite"
-      className="truncate text-xs text-muted-foreground"
+      className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
     >
       {label}
       {progress.failed > 0 ? (
@@ -175,7 +175,7 @@ export function Sidebar() {
           <span className="flex items-center gap-1">
             <span
               aria-hidden
-              className="hidden text-xs text-muted-foreground sm:inline"
+              className="hidden whitespace-nowrap text-xs text-muted-foreground sm:inline"
             >
               连续
             </span>
@@ -191,7 +191,7 @@ export function Sidebar() {
             <button
               type="button"
               onClick={handleRetryAll}
-              className="rounded-md px-2 py-1 text-xs font-medium text-red-600 outline-none hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="shrink-0 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium text-red-600 outline-none hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-ring/50"
             >
               全部重试
             </button>
