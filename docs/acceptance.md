@@ -25,6 +25,23 @@ node scripts/audit-attribution.mjs
    API key（如 magpie 需要）。默认值已与本机 magpie 对齐。
 5. 确认 magpie 正在运行（`curl -s http://127.0.0.1:3425/v1/models` 应返回模型列表）。
 
+### 离线 playground（可选预验收，不联网）
+
+在真实 YouTube 验收前，可先用 T14 的离线 playground 检查完整 UI 与交互；它挂载的是
+真实的 `ContentApp`，只 mock 了 `chrome.*`、播放器和字幕/翻译后端：
+
+```bash
+pnpm playground                 # 打开终端打印的地址，默认 http://localhost:5183/
+pnpm exec tsx playground/smoke.ts                          # 16 项 mock / fixture 冒烟
+pnpm exec vite build --config playground/vite.config.ts    # playground 单独构建
+```
+
+顶部工具栏可切换 `normal` / `no-captions` / `translate-failed` / `cache-hit` 四种场景，
+覆盖正常双语、无字幕、翻译失败重试与缓存命中零请求。详细用法见
+[`playground/README.md`](../playground/README.md)。
+
+实际结果：____________________
+
 ### 构建产物检查（自动 + 人工）
 
 `node scripts/verify-manifest.ts`（`pnpm build` 已调用）与 `tests/manifest.test.ts`
