@@ -147,3 +147,7 @@ Earworm 以 MIT 发布，见 [`LICENSE`](./LICENSE)。被 copy/adapt 的第三�
 代码在文件头保留版权与来源，完整许可文本、数据署名与依赖说明见
 [`NOTICE`](./NOTICE)；逐文件审计与残余风险见
 [`docs/compliance.md`](./docs/compliance.md)。
+
+生产构建会把 `LICENSE`、`NOTICE` 一并复制到 `.output/chrome-mv3/` 根目录
+（`wxt.config.ts` 的 `build:publicAssets` hook），`scripts/verify-manifest.ts`
+会断言它们存在，因此分发的扩展包自带完整归属声明。
