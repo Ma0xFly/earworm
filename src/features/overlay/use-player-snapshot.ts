@@ -1,5 +1,8 @@
-// Portions adapted from yt-dual-subs (https://github.com/Gythiro/yt-dual-subs),
-// Copyright (c) 2026 Gythiro, MIT License. See the NOTICE file.
+/**
+ * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs (MIT) — Copyright (c) 2026 Gythiro.
+ * Upstream: https://github.com/Gythiro/yt-dual-subs (v3.7.0: content.js overlay and caption lifecycle).
+ * Full upstream MIT permission text: see NOTICE.
+ */
 import { useEffect, useState } from 'react';
 import { getPlayerElement } from '@/lib/ui/shadow';
 import {

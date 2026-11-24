@@ -1,10 +1,9 @@
 /**
- * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs v3.7.0
- * (inject.js `videoIdFromLocation`, `isTimedtext`, `hasTlang`, `normKey`,
- * `trackKindOf`, `trackLangOf`, `vidOfUrl`, `buildUrl`).
- * Copyright (c) 2026 Gythiro — MIT License (see NOTICE).
- * Upstream: https://github.com/Gythiro/yt-dual-subs
- * Adapted: 2026-11-24.
+ * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs (MIT) — Copyright (c) 2026 Gythiro.
+ * Upstream: https://github.com/Gythiro/yt-dual-subs (v3.7.0: inject.js
+ * `videoIdFromLocation`, `isTimedtext`, `hasTlang`, `normKey`, `trackKindOf`,
+ * `trackLangOf`, `vidOfUrl`, `buildUrl`).
+ * Adapted: 2026-11-24. Full upstream MIT permission text: see NOTICE.
  *
  * Pure URL / track-selection helpers for the player-runtime timedtext
  * acquisition. DOM-free so Vitest can exercise every rule directly.

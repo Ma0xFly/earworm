@@ -1,4 +1,9 @@
 /**
+ * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs (MIT) — Copyright (c) 2026 Gythiro.
+ * Upstream: https://github.com/Gythiro/yt-dual-subs (v3.7.0: content.css
+ * native-caption suppression).
+ * Full upstream MIT permission text: see NOTICE.
+ *
  * Page-level (document `<head>`) style used to hide YouTube's native caption
  * layer while Earworm is active.
  *

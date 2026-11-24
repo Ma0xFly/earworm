@@ -1,9 +1,11 @@
+/**
+ * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs (MIT) — Copyright (c) 2026 Gythiro.
+ * Upstream: https://github.com/Gythiro/yt-dual-subs (v3.7.0: background.js translation channel).
+ * Full upstream MIT permission text: see NOTICE.
+ */
+
 import type { LlmSettings } from '@/lib/contracts';
 import type { ChatMessage } from './prompt';
-
-// Portions derived from yt-dual-subs v3.7.0 (background.js translation channel)
-// Copyright (c) 2026 Gythiro — MIT License (see NOTICE)
-// https://github.com/Gythiro/yt-dual-subs
 
 /**
  * Tiny OpenAI-compatible chat-completions client for the background worker.

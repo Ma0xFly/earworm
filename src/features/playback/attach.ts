@@ -2,10 +2,9 @@
  * Keeps the singleton player controller attached to the current watch-page
  * `<video>` across YouTube SPA navigation.
  *
- * Adapted for Earworm (MIT) from:
- * - easysubs (https://github.com/Nitrino/easysubs), Copyright (c) 2022 Seo
- *   Jong Hak, MIT License — YouTube adapter lifecycle.
- * See `NOTICE` for the full third-party notice.
+ * Adapted for Earworm (MIT) from Nitrino/easysubs (MIT) — Copyright (c) 2022 Seo Jong Hak.
+ * Upstream: https://github.com/Nitrino/easysubs (YouTube adapter lifecycle).
+ * Full upstream MIT permission text: see NOTICE.
  */
 
 import { playerController, type PlayerController } from './controller';

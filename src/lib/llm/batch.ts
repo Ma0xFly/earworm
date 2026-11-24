@@ -1,6 +1,8 @@
-// Retry/timeout policy adapted from yt-dual-subs v3.7.0 (background.js)
-// Copyright (c) 2026 Gythiro — MIT License (see NOTICE)
-// https://github.com/Gythiro/yt-dual-subs
+/**
+ * Adapted for Earworm (MIT) from Gythiro/yt-dual-subs (MIT) — Copyright (c) 2026 Gythiro.
+ * Upstream: https://github.com/Gythiro/yt-dual-subs (v3.7.0: background.js retry/timeout policy).
+ * Full upstream MIT permission text: see NOTICE.
+ */
 
 import type { LlmSettings, VideoMeta } from '@/lib/contracts';
 import type {

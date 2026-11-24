@@ -2,12 +2,12 @@
  * Keyboard shortcuts for sentence navigation: a = previous, s = repeat,
  * d = next.
  *
- * Adapted for Earworm (MIT) from:
- * - easysubs (https://github.com/Nitrino/easysubs), Copyright (c) 2022 Seo
- *   Jong Hak, MIT License — typing-target guard and discrete keydown actions.
- * - SceneLingo (https://github.com/umutgokbulak/SceneLingo), Copyright (c)
- *   2026 Umut, MIT License — keyboard registration guards.
- * See `NOTICE` for the full third-party notice.
+ * Adapted for Earworm (MIT) from Nitrino/easysubs (MIT) — Copyright (c) 2022 Seo Jong Hak.
+ * Adapted for Earworm (MIT) from umutgokbulak/SceneLingo (MIT) — Copyright (c) 2026 Umut.
+ * Upstream: https://github.com/Nitrino/easysubs and https://github.com/umutgokbulak/SceneLingo
+ * (easysubs: typing-target guard and discrete keydown actions; SceneLingo:
+ * keyboard registration guards).
+ * Full upstream MIT permission texts: see NOTICE.
  *
  * Boundaries: the first sentence clamps `a` to itself, the last sentence
  * clamps `d` to itself (both re-play from the sentence start rather than
