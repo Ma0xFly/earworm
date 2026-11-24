@@ -5,7 +5,7 @@
  * emits the "字幕句" (Sentence) unit defined in `GLOSSARY.md` and
  * `src/lib/contracts.ts`.
  *
- * Contract highlights (architecture.md §3):
+ * Contract highlights (see `docs/adr/` and `GLOSSARY.md`):
  * - `text` is exactly the normalized cue text(s) joined with single spaces, so
  *   collocation span offsets computed on it stay stable.
  * - `cueStart`/`cueEnd` are inclusive indexes into the *input* `cues` array.

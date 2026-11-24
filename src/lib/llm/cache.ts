@@ -1,4 +1,5 @@
 import type { CachedTranslation } from '@/lib/contracts';
+import { isValidCachedTranslation } from '@/lib/cached-translation';
 import {
   clearStore,
   openDatabase,
@@ -9,7 +10,7 @@ import {
 /**
  * Per-video translation cache owned by the background service worker.
  *
- * Layout (architecture §4.2): IndexedDB `earworm-translations`, object store
+ * Layout: IndexedDB `earworm-translations`, object store
  * `videos`, out-of-line key `${videoId}:${cuesHash}`, value
  * `{zh, cols, model, ts}`. At most 200 videos are retained; `ts` is both the
  * commit timestamp and the last-access timestamp, so eviction drops the least
@@ -26,37 +27,8 @@ export function translationCacheKey(videoId: string, cuesHash: string): string {
   return `${videoId}:${cuesHash}`;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** Structural validation shared by commit, read and tests. */
-export function isValidCachedTranslation(value: unknown): value is CachedTranslation {
-  if (!isRecord(value)) return false;
-
-  const zh = value.zh;
-  if (!Array.isArray(zh) || zh.length === 0) return false;
-  if (!zh.every((line) => typeof line === 'string' && line.trim().length > 0)) return false;
-
-  const cols = value.cols;
-  if (!Array.isArray(cols) || cols.length !== zh.length) return false;
-  for (const sentenceCols of cols) {
-    if (!Array.isArray(sentenceCols)) return false;
-    for (const collocation of sentenceCols) {
-      if (!isRecord(collocation)) return false;
-      if (typeof collocation.text !== 'string' || collocation.text.length === 0) return false;
-      if (collocation.note !== undefined && typeof collocation.note !== 'string') return false;
-    }
-  }
-
-  return (
-    typeof value.model === 'string' &&
-    value.model.length > 0 &&
-    typeof value.ts === 'number' &&
-    Number.isFinite(value.ts) &&
-    value.ts >= 0
-  );
-}
+// Re-exported for existing callers/tests; the schema lives in one module.
+export { isValidCachedTranslation };
 
 function openTranslationDb(): Promise<IDBDatabase> {
   return openDatabase(TRANSLATION_DB_NAME, DB_VERSION, [{ name: TRANSLATION_STORE }]);
@@ -95,8 +67,10 @@ export async function getCachedTranslation(
 }
 
 function tsOf(value: unknown): number {
-  if (!isRecord(value) || typeof value.ts !== 'number' || !Number.isFinite(value.ts)) return 0;
-  return value.ts;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return 0;
+  const ts = (value as { ts?: unknown }).ts;
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) return 0;
+  return ts;
 }
 
 async function enforceCacheLimit(db: IDBDatabase): Promise<void> {

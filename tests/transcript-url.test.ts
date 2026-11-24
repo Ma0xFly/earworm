@@ -71,11 +71,12 @@ describe('timedtext URL helpers', () => {
     expect(built.searchParams.get('v')).toBe('dQw4w9WgXcQ');
   });
 
-  it('can re-add an explicit tlang target', () => {
-    const built = new URL(buildUrl(CAPTURED, 'zh-Hans'));
+  it('never emits a translation target (ADR-0002)', () => {
+    const built = new URL(buildUrl(CAPTURED, WATCH));
     expect(built.searchParams.get('fmt')).toBe('json3');
-    expect(built.searchParams.get('tlang')).toBe('zh-Hans');
+    expect(built.searchParams.get('tlang')).toBeNull();
     expect(built.searchParams.get('pot')).toBe('abc123');
+    expect(built.searchParams.get('signature')).toBe('xyz789');
   });
 
   it('tracks identity by stripping pot/fmt/tlang only', () => {

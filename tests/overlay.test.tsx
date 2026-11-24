@@ -100,8 +100,7 @@ describe('bilingual overlay content', () => {
   });
 
   it('makes word tokens the only pointer-event targets', () => {
-    const onWordClick = vi.fn();
-    const { container } = renderView({ onWordClick });
+    const { container } = renderView();
 
     const root = container.querySelector<HTMLElement>('[data-ew-overlay]');
     expect(root?.style.pointerEvents).toBe('none');
@@ -109,13 +108,11 @@ describe('bilingual overlay content', () => {
     const word = container.querySelector<HTMLElement>('[data-word="hello"]');
     expect(word).not.toBeNull();
     expect(word?.textContent).toBe('Hello');
+    expect(word?.getAttribute('data-offset')).toBe('0');
 
     const css = container.querySelector('[data-ew-overlay] style')?.textContent ?? '';
     expect(css).toContain('[data-word]');
     expect(css).toContain('pointer-events: auto');
-
-    word?.click();
-    expect(onWordClick).toHaveBeenCalledWith('Hello', 0, word);
   });
 
   it('shows a light loading state while captions are acquired', () => {
@@ -164,13 +161,36 @@ describe('bilingual overlay content', () => {
 });
 
 describe('overlay lifecycle', () => {
-  it('installs native caption suppression on activation and removes it on teardown', () => {
+  it('installs native caption suppression only for a ready session and removes it on teardown', () => {
+    sessionMock.state = readyState();
     const { unmount } = render(<Overlay />);
 
     expect(document.documentElement.getAttribute('data-earworm-active')).toBe('1');
     expect(document.getElementById(NATIVE_CAPTION_STYLE_ID)).not.toBeNull();
 
     unmount();
+    expect(document.getElementById(NATIVE_CAPTION_STYLE_ID)).toBeNull();
+    expect(document.documentElement.hasAttribute('data-earworm-active')).toBe(false);
+  });
+
+  it('keeps native captions visible when acquisition fails', () => {
+    const { rerender } = render(<Overlay />);
+    sessionMock.state = readyState({
+      status: 'no-captions',
+      sentences: [],
+      translation: { state: 'idle', done: 0, total: 0, failed: 0 },
+    });
+    rerender(<Overlay />);
+    expect(document.getElementById(NATIVE_CAPTION_STYLE_ID)).toBeNull();
+    expect(document.documentElement.hasAttribute('data-earworm-active')).toBe(false);
+
+    sessionMock.state = readyState({
+      status: 'error',
+      sentences: [],
+      error: 'timeout',
+      translation: { state: 'idle', done: 0, total: 0, failed: 0 },
+    });
+    rerender(<Overlay />);
     expect(document.getElementById(NATIVE_CAPTION_STYLE_ID)).toBeNull();
     expect(document.documentElement.hasAttribute('data-earworm-active')).toBe(false);
   });

@@ -1,7 +1,7 @@
 /**
  * Body-level shadow DOM host for the whole Earworm UI.
  *
- * Contract (architecture.md §6):
+ * Contract layout (one body-level shadow host):
  * - ONE `<earworm-root>` host appended to `<body>` with
  *   `position:fixed; inset:0; pointer-events:none; z-index:2147483000`, so
  *   YouTube player ancestors can never clip it.
@@ -14,6 +14,8 @@
  *   `--ew-player-left/top/width/height` (+ bottom/right conveniences) so the
  *   overlay and sidebar can align without JS layout branches.
  */
+
+import { findPlayerElement } from './selectors';
 
 export type PlayerRect = {
   left: number;
@@ -161,14 +163,9 @@ export function publishPlayerRect(host: HTMLElement, rect: PlayerRect | null): v
 
 /** Locate the YouTube player element, falling back to the raw video element. */
 export function getPlayerElement(): Element | null {
-  return (
-    document.querySelector('#movie_player') ??
-    // Shorts renders a separate vertical player instead of #movie_player; the
-    // overlay/sidebar geometry must follow it on /shorts/<id> pages.
-    document.querySelector('#shorts-player') ??
-    document.querySelector('video.html5-main-video') ??
-    document.querySelector('video')
-  );
+  // Shorts renders a separate vertical player instead of #movie_player; the
+  // overlay/sidebar geometry must follow it on /shorts/<id> pages.
+  return findPlayerElement(document);
 }
 
 function addListener(

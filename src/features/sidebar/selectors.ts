@@ -1,21 +1,12 @@
 /**
- * All YouTube page selectors used by the sidebar, plus the pure layout maths
- * that turns a measured page environment into the panel geometry.
+ * Sidebar placement: the pure layout maths that turns a measured page
+ * environment into the panel geometry.
  *
- * Keeping every selector in this one map means a YouTube DOM change is a
- * one-file fix, and the placement rules stay unit-testable without a browser.
+ * DOM selectors live in the central `@/lib/ui/selectors` map; the placement
+ * rules stay unit-testable without a browser.
  */
 import type { CSSProperties } from 'react';
-
-/** Single map of page selectors owned by the sidebar. */
-export const SIDEBAR_SELECTORS = {
-  /** Recommended-videos column on the watch page (the area the panel covers). */
-  secondary: '#secondary',
-  /** Inner column, used when `#secondary` is absent in a layout experiment. */
-  secondaryInner: '#secondary-inner',
-  player: '#movie_player',
-  playerFallback: '.html5-video-player',
-} as const;
+import { findSidebarPlayer, PAGE_SELECTORS } from '@/lib/ui/selectors';
 
 /** Class YouTube puts on the player in theater (large-width) mode. */
 export const THEATER_CLASS = 'ytp-large-width-mode';
@@ -53,16 +44,8 @@ export type SidebarLayout = {
 
 function getSecondary(doc: Document): Element | null {
   return (
-    doc.querySelector(SIDEBAR_SELECTORS.secondary) ??
-    doc.querySelector(SIDEBAR_SELECTORS.secondaryInner)
-  );
-}
-
-function getPlayer(doc: Document): Element | null {
-  return (
-    doc.querySelector(SIDEBAR_SELECTORS.player) ??
-    doc.querySelector(SIDEBAR_SELECTORS.playerFallback) ??
-    doc.querySelector('video')
+    doc.querySelector(PAGE_SELECTORS.secondary) ??
+    doc.querySelector(PAGE_SELECTORS.secondaryInner)
   );
 }
 
@@ -74,7 +57,7 @@ export function readSidebarEnvironment(doc: Document = document): SidebarEnviron
     : 0;
   const usableSecondaryWidth =
     secondaryWidth >= MIN_SECONDARY_WIDTH ? secondaryWidth : null;
-  const player = getPlayer(doc);
+  const player = findSidebarPlayer(doc);
   const viewportWidth = doc.defaultView?.innerWidth ?? 0;
 
   return {

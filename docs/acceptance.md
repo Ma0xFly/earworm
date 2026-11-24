@@ -193,6 +193,28 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
 
 实际结果：____________________
 
+### §7.7.1 屏上字幕兜底（best-effort，spec §5）
+
+自动证据：`synthesizes cues from painted screen text when nudging cannot be sniffed`
+—— nudge 超时后，注入脚本在 4s 窗口内采样 `.ytp-caption-segment` 文本，
+以 `video.currentTime` 合成 `kind: 'manual'` 的 `cues-ready`；有真实 timedtext
+捕获时立即中止采样（`lets a real timedtext capture win over the screen-text fallback`）。
+
+兜底限制（已知，不在 v1 修复范围）：
+
+- 只读取采样时**正在屏幕上绘制**的字幕行；暂停、原生字幕未开启或纯空白窗口
+  读不到文本，仍回落到原有分类失败（`nudge-failed` / `timeout`）。
+- 合成 cue 的 `start` 是采样墙钟时间，不是 YouTube 的真实 cue 起点；`end` 取
+  下一行出现时间（末行固定 +2s），因此时间轴精度低于 `timedtext` 路径。
+- 兜底不改变「v1 只接受人工英文字幕」：ASR-only / 无英文轨仍直接分类失败，
+  不抓屏上文本。
+
+手工步骤：对一个 CC 菜单有 manual English、但注入脚本抓不到 timedtext 的视频，
+确认 15s 内（8s 嗅探 + 3s nudge + ≤4s 采样）出现双语字幕；若窗口内无屏上文本，
+overlay 显示「字幕获取失败」并可点「重试」。
+
+实际结果：____________________
+
 ### §7.8 同视频二次打开零 LLM 请求
 
 自动证据：`reuses the cache on the second open with zero translate requests`
@@ -240,7 +262,7 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
 | 扩展重新加载（chrome://extensions） | 页面需刷新；刷新后正常挂载，无重复 shadow root | ______ |
 | 视频无中文译文（LLM 失败） | 英文仍显示；失败句可单句重试；其余句不受影响 | ______ |
 | Shorts（可选） | overlay 在 18% 底部锚点，不被右侧按钮遮挡；退出 Shorts 恢复普通锚点 | ______ |
-| 原生字幕 | 扩展启用时 YouTube 原生字幕视觉消失；禁用扩展/离开 YouTube 后恢复 | ______ |
+| 原生字幕 | 会话 ready 且显示双语字幕时 YouTube 原生字幕视觉消失；无字幕/获取失败时不隐藏，禁用扩展或离开 YouTube 后恢复 | ______ |
 
 ## 5. 测试限制（必读）
 
@@ -251,6 +273,8 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
   以 `source: window` 派发，因此覆盖了真实校验逻辑与客户端，但不覆盖浏览器
   `postMessage` 传输本身（该传输由单测与真实手工验收覆盖）。
 - 原生字幕 `aria-hidden`：测试只断言 DOM 属性与清理恢复，未用真实屏幕阅读器验证。
+- 屏上字幕兜底只在合成 DOM/定时器上测试，真实 YouTube 的 caption DOM 改版或
+  虚拟化渲染未覆盖；限制见 §7.7.1。
 - Shorts 几何为合成矩形断言（`#shorts-player` + 18% 锚点），未在真实 Shorts DOM 上
   做截图比对；若 YouTube 改版，需手工确认。
 - 候选视频的字幕可用性可能随 YouTube 变化；以实际 CC 菜单为准。

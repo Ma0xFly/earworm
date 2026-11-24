@@ -33,6 +33,7 @@ import { useSession } from './SessionProvider';
 const seams = vi.hoisted(() => ({
   startTranscriptClient: vi.fn(),
   stopTranscriptClient: vi.fn(),
+  requestProduce: vi.fn(),
   handlers: null as TranscriptHandlers | null,
   loadCollocationTable: vi.fn(),
   preloadDictionary: vi.fn(),
@@ -40,7 +41,11 @@ const seams = vi.hoisted(() => ({
 
 vi.mock('@/lib/transcript', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/transcript')>();
-  return { ...actual, startTranscriptClient: seams.startTranscriptClient };
+  return {
+    ...actual,
+    startTranscriptClient: seams.startTranscriptClient,
+    requestProduce: seams.requestProduce,
+  };
 });
 
 vi.mock('@/lib/collocations', async (importOriginal) => {
@@ -187,6 +192,7 @@ beforeEach(() => {
     return seams.stopTranscriptClient;
   });
   seams.stopTranscriptClient.mockReset();
+  seams.requestProduce.mockReset();
   seams.loadCollocationTable.mockReset().mockResolvedValue([{ text: 'give up' }]);
   seams.preloadDictionary.mockReset().mockResolvedValue(null);
 
@@ -245,6 +251,50 @@ describe('session failure states', () => {
     await deliverFailure('other-video', 'no-captions');
 
     expect(api?.state.status).toBe('acquiring');
+  });
+
+  it('retryAll re-acquires captions after an acquisition error', async () => {
+    renderSession();
+    await deliverFailure('vid1', 'timeout');
+    expect(api?.state.status).toBe('error');
+
+    await act(async () => {
+      api?.retryAll();
+    });
+
+    expect(api?.state.status).toBe('acquiring');
+    expect(api?.state.error).toBeUndefined();
+    expect(api?.state.sentences).toEqual([]);
+    expect(seams.requestProduce).toHaveBeenCalledTimes(1);
+    expect(seams.requestProduce).toHaveBeenCalledWith({ videoId: 'vid1', force: true });
+  });
+
+  it('retryAll retries acquisition after a no-captions result too', async () => {
+    renderSession();
+    await deliverFailure('vid1', 'no-captions');
+    expect(api?.state.status).toBe('no-captions');
+
+    await act(async () => {
+      api?.retryAll();
+    });
+
+    expect(api?.state.status).toBe('acquiring');
+    expect(seams.requestProduce).toHaveBeenCalledWith({ videoId: 'vid1', force: true });
+  });
+
+  it('a retried acquisition produces a fresh ready session', async () => {
+    renderSession();
+    await deliverFailure('vid1', 'timeout');
+
+    await act(async () => {
+      api?.retryAll();
+    });
+    expect(api?.state.status).toBe('acquiring');
+
+    await deliverTrack();
+    await waitForTranslation('done');
+    expect(api?.state.status).toBe('ready');
+    expect(api?.state.sentences).toHaveLength(2);
   });
 });
 
@@ -363,6 +413,38 @@ describe('session track pipeline', () => {
     expect(commits).toHaveLength(1);
     if (commits[0]?.type !== 'earworm:commit') throw new Error('expected commit');
     expect(commits[0].data.cols).toEqual([[], [{ text: 'give up', note: '放弃' }]]);
+  });
+
+  it('only marks a cache commit committed after ok, and retries a failed commit', async () => {
+    let commitCalls = 0;
+    const send = sendMock((request) => {
+      if (request.type === 'earworm:commit') {
+        commitCalls += 1;
+        return Promise.resolve(
+          commitCalls === 1 ? { ok: false, error: 'cache unavailable' } : { ok: true },
+        );
+      }
+      return defaultSend(request);
+    });
+
+    renderSession();
+    await deliverTrack();
+    await waitForTranslation('done');
+
+    await waitFor(() => expect(requestsOf(send, 'earworm:commit')).toHaveLength(1));
+    // The failed commit must not be treated as committed: "retry all" (no
+    // failed sentences) retries the cache write instead of doing nothing.
+    await act(async () => {
+      api?.retryAll();
+    });
+    await waitFor(() => expect(requestsOf(send, 'earworm:commit')).toHaveLength(2));
+
+    // A successful commit is final; another retry is a no-op.
+    await act(async () => {
+      api?.retryAll();
+    });
+    await waitFor(() => expect(requestsOf(send, 'earworm:commit')).toHaveLength(2));
+    expect(commitCalls).toBe(2);
   });
 
   it('applies successful sentences and marks only the rest failed, without committing', async () => {

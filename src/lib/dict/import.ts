@@ -10,6 +10,7 @@
  */
 
 import type { WordEntry } from '@/lib/contracts';
+import { fetchExtensionJson } from '@/lib/data-assets';
 import { normalizeWord } from '@/lib/text/tokenize';
 import {
   clearStore,
@@ -35,6 +36,7 @@ import {
   type StoredWord,
 } from './db';
 import { buildExchangeIndex } from './lemma';
+import { isPlainRecord as isRecord } from '@/lib/utils/is-record';
 
 /** Fully parsed dictionary: headwords, lemma reverse map and exchange forms. */
 export type Dictionary = {
@@ -131,10 +133,6 @@ export function createDictionary(ecdict: EcdictFile, lemmas: LemmaFile): Diction
   }
 
   return { meta: ecdict.meta, lemmaMeta: lemmas.meta, byWord, byLemma, byForm };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function assertEcdictMeta(value: unknown): asserts value is EcdictMeta {
@@ -320,20 +318,9 @@ export async function loadDictionary(
 
   const ecdictUrl = options.ecdictUrl ?? dictionaryAssetUrl('ecdict.json');
   const lemmaUrl = options.lemmaUrl ?? dictionaryAssetUrl('lemmas.json');
-  const [ecdictResponse, lemmaResponse] = await Promise.all([
-    fetchImpl(ecdictUrl),
-    fetchImpl(lemmaUrl),
-  ]);
-  if (!ecdictResponse.ok) {
-    throw new Error(`Failed to fetch ${ecdictUrl}: HTTP ${ecdictResponse.status}`);
-  }
-  if (!lemmaResponse.ok) {
-    throw new Error(`Failed to fetch ${lemmaUrl}: HTTP ${lemmaResponse.status}`);
-  }
-
   const [ecdictPayload, lemmaPayload] = await Promise.all([
-    ecdictResponse.json() as Promise<unknown>,
-    lemmaResponse.json() as Promise<unknown>,
+    fetchExtensionJson('data/ecdict.json', fetchImpl, ecdictUrl),
+    fetchExtensionJson('data/lemmas.json', fetchImpl, lemmaUrl),
   ]);
   const ecdict = decodeEcdictFile(ecdictPayload);
   const lemmas = decodeLemmaFile(lemmaPayload);

@@ -90,28 +90,14 @@ export function llmSpans(
 }
 
 /**
- * One translated sentence. Invalid/unmatched LLM spans are dropped by the
- * aligner but the translation is kept: a bad annotation never hides `zh`.
+ * Merge one translation line into a sentence.
+ *
+ * LLM output and committed cache rows share this path: trim `zh`, keep an
+ * already-done sentence when the line is empty, otherwise mark it failed; on
+ * success drop unalignable LLM spans but keep the translation (a bad
+ * annotation never hides `zh`).
  */
-export function applyLlmResult(
-  offline: readonly CollocationSpan[],
-  sentence: LearningSentence,
-  result: LlmSentenceResult,
-): LearningSentence {
-  const zh = typeof result.zh === 'string' ? result.zh.trim() : '';
-  if (zh.length === 0) {
-    return sentence.status === 'done' ? sentence : { ...sentence, status: 'failed' };
-  }
-  return {
-    ...sentence,
-    zh,
-    cols: unionSpans(offline, llmSpans(sentence.text, result.cols)),
-    status: 'done',
-  };
-}
-
-/** Apply one cached (all-batches-successful) row to its sentence. */
-export function applyCachedSentence(
+function applySentenceTranslation(
   offline: readonly CollocationSpan[],
   sentence: LearningSentence,
   zh: string | undefined,
@@ -127,6 +113,25 @@ export function applyCachedSentence(
     cols: unionSpans(offline, llmSpans(sentence.text, cols)),
     status: 'done',
   };
+}
+
+/** Apply one live LLM result to its sentence. */
+export function applyLlmResult(
+  offline: readonly CollocationSpan[],
+  sentence: LearningSentence,
+  result: LlmSentenceResult,
+): LearningSentence {
+  return applySentenceTranslation(offline, sentence, result.zh, result.cols);
+}
+
+/** Apply one cached (all-batches-successful) row to its sentence. */
+export function applyCachedSentence(
+  offline: readonly CollocationSpan[],
+  sentence: LearningSentence,
+  zh: string | undefined,
+  cols: readonly { text: string; note?: string }[] | undefined,
+): LearningSentence {
+  return applySentenceTranslation(offline, sentence, zh, cols);
 }
 
 export function progressOf(sentences: readonly LearningSentence[]): {

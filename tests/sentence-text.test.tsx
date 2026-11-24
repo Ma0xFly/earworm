@@ -72,50 +72,21 @@ describe('SentenceText', () => {
     expect(container.querySelector('mark')?.textContent).toBe('Give,\tup');
   });
 
-  it('reports word clicks with the surface form, word index and element', () => {
-    const onWordClick = vi.fn();
+  it('renders word tokens for delegated dictionary clicks, without button semantics', () => {
     const container = renderSentence(
-      <SentenceText text="Never give up." onWordClick={onWordClick} />,
+      <SentenceText text="Never give up." cols={[col(6, 13, 'give up')]} />,
     );
 
     const give = container.querySelector<HTMLElement>('[data-word="give"]');
-    expect(give).not.toBeNull();
-    give?.click();
-
-    expect(onWordClick).toHaveBeenCalledTimes(1);
-    const [surface, index, element] = onWordClick.mock.calls[0] ?? [];
-    expect(surface).toBe('give');
-    expect(index).toBe(1);
-    expect(element).toBe(give);
-  });
-
-  it('keeps words inside a collocation clickable with their global index', () => {
-    const onWordClick = vi.fn();
-    const container = renderSentence(
-      <SentenceText
-        text="Never give up."
-        cols={[col(6, 13, 'give up')]}
-        onWordClick={onWordClick}
-      />,
-    );
-
     const up = container.querySelector<HTMLElement>('mark [data-word="up"]');
+    expect(give).not.toBeNull();
     expect(up).not.toBeNull();
-    up?.click();
-    expect(onWordClick).toHaveBeenCalledWith('up', 2, up);
-  });
-
-  it('fires word clicks from the keyboard', () => {
-    const onWordClick = vi.fn();
-    const container = renderSentence(
-      <SentenceText text="Never give up." onWordClick={onWordClick} />,
-    );
-
-    const up = container.querySelector<HTMLElement>('[data-word="up"]');
-    up?.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
-    );
-    expect(onWordClick).toHaveBeenCalledWith('up', 2, up);
+    expect(give?.getAttribute('data-offset')).toBe('6');
+    // Clicks are delegated from DictionaryPopup via [data-word]; the span is
+    // deliberately not a focusable button of its own.
+    expect(give?.getAttribute('role')).toBeNull();
+    expect(give?.getAttribute('tabindex')).toBeNull();
+    expect(up?.getAttribute('data-offset')).toBe('11');
   });
 
   it('exposes UTF-16 character offsets on word spans', () => {

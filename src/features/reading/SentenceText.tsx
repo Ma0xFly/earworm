@@ -1,4 +1,4 @@
-import { useMemo, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { CollocationSpan } from '@/lib/contracts';
 import { normalizeWord, tokenizeWords, type TextToken } from '@/lib/text/tokenize';
 
@@ -9,9 +9,9 @@ import { normalizeWord, tokenizeWords, type TextToken } from '@/lib/text/tokeniz
  * - `text` is rendered losslessly (`textContent === text`), including original
  *   spacing, punctuation, case and astral characters;
  * - the root carries `data-lang`;
- * - word tokens are `<span data-word="..." data-offset="...">` and call
- *   `onWordClick(surface, wordIndex, element)`; `wordIndex` counts words only,
- *   so it stays stable inside and outside marks;
+ * - word tokens are `<span data-word="..." data-offset="...">`; the dictionary
+ *   popup delegates clicks by reading those data attributes (no per-token
+ *   handler is threaded through the overlay);
  * - collocation ranges become `<mark data-collocation="...">` wrapping their
  *   original characters; overlapping spans are resolved before rendering, so a
  *   mark never nests inside another and no character is duplicated or dropped.
@@ -19,7 +19,6 @@ import { normalizeWord, tokenizeWords, type TextToken } from '@/lib/text/tokeniz
 export type SentenceTextProps = {
   text: string;
   cols?: CollocationSpan[];
-  onWordClick?: (word: string, index: number, element: HTMLElement) => void;
   lang?: string;
   className?: string;
 };
@@ -55,64 +54,20 @@ function normalizeSpans(
   return spans;
 }
 
-function wordClassName(interactive: boolean): string {
-  return interactive ? 'cursor-pointer hover:underline hover:underline-offset-2' : '';
-}
-
-function renderToken(
-  token: TextToken,
-  wordIndex: number,
-  onWordClick: SentenceTextProps['onWordClick'],
-): ReactNode {
+function renderTokenNode(token: TextToken): ReactNode {
   if (token.kind !== 'word') {
     return <span key={`t-${token.start}`}>{token.text}</span>;
   }
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>): void => {
-    if (!onWordClick) return;
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    onWordClick(token.text, wordIndex, event.currentTarget);
-  };
-
   return (
-    <span
-      key={`w-${token.start}`}
-      data-word={normalizeWord(token.text)}
-      data-offset={token.start}
-      role={onWordClick ? 'button' : undefined}
-      tabIndex={onWordClick ? 0 : undefined}
-      className={wordClassName(Boolean(onWordClick))}
-      onClick={
-        onWordClick
-          ? (event) => onWordClick(token.text, wordIndex, event.currentTarget)
-          : undefined
-      }
-      onKeyDown={onWordClick ? handleKeyDown : undefined}
-    >
+    <span key={`w-${token.start}`} data-word={normalizeWord(token.text)} data-offset={token.start}>
       {token.text}
     </span>
   );
 }
 
-function renderTokenNode(
-  token: TextToken,
-  wordIndexRef: { current: number },
-  onWordClick: SentenceTextProps['onWordClick'],
-): ReactNode {
-  const node = renderToken(
-    token,
-    token.kind === 'word' ? wordIndexRef.current : -1,
-    onWordClick,
-  );
-  if (token.kind === 'word') wordIndexRef.current += 1;
-  return node;
-}
-
 export function SentenceText({
   text,
   cols,
-  onWordClick,
   lang = 'en',
   className,
 }: SentenceTextProps) {
@@ -121,7 +76,6 @@ export function SentenceText({
 
   const content = useMemo(() => {
     const nodes: ReactNode[] = [];
-    const wordIndex = { current: 0 };
     let index = 0;
     let spanIndex = 0;
 
@@ -141,7 +95,7 @@ export function SentenceText({
       // tokens at a boundary stay unmarked rather than being split, so word
       // identity (surface and index) is never broken.
       if (!span || token.start < span.start || token.end > span.end) {
-        nodes.push(renderTokenNode(token, wordIndex, onWordClick));
+        nodes.push(renderTokenNode(token));
         index += 1;
         continue;
       }
@@ -150,7 +104,7 @@ export function SentenceText({
       while (index < tokens.length) {
         const current = tokens[index];
         if (!current || current.start < span.start || current.end > span.end) break;
-        marked.push(renderTokenNode(current, wordIndex, onWordClick));
+        marked.push(renderTokenNode(current));
         index += 1;
       }
 
@@ -169,7 +123,7 @@ export function SentenceText({
     }
 
     return nodes;
-  }, [tokens, spans, onWordClick]);
+  }, [tokens, spans]);
 
   return (
     <span data-lang={lang} className={className}>

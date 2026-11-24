@@ -4,6 +4,7 @@
  * Full upstream MIT permission text: see NOTICE.
  */
 import { useEffect, useState } from 'react';
+import { PAGE_SELECTORS } from '@/lib/ui/selectors';
 import { getPlayerElement } from '@/lib/ui/shadow';
 import {
   computeControlsLift,
@@ -58,7 +59,7 @@ export function readPlayerSnapshot(
     return { adPlaying: true, liftPx: 0, playerWidth: playerRect.width };
   }
 
-  const bar = player.querySelector('.ytp-chrome-bottom');
+  const bar = player.querySelector(PAGE_SELECTORS.controlBar);
   const controlsVisible =
     bar instanceof HTMLElement &&
     bar.offsetParent !== null &&

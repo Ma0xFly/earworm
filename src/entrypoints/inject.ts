@@ -20,7 +20,8 @@
  */
 
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
-import type { CueTrack } from '@/lib/contracts';
+import type { Cue, CueTrack } from '@/lib/contracts';
+import { PAGE_SELECTORS, PLAYER_DOM_ID } from '@/lib/ui/selectors';
 import {
   parseContentEvent,
   postCuesFailed,
@@ -59,6 +60,17 @@ export const FETCH_TIMEOUT_MS = 8000;
 export const HTTP_RETRY_DELAY_MS = 500;
 /** A 429 is endpoint-level and sticky; do not hammer it for this long. */
 export const RATE_LIMIT_MEMORY_MS = 25000;
+/**
+ * Best-effort screen-text fallback window after a nudge/timeout: how long we
+ * keep reading the rendered caption DOM before conceding failure.
+ */
+export const SCREEN_TEXT_WINDOW_MS = 4000;
+/** How often the fallback samples the caption DOM. */
+export const SCREEN_TEXT_SAMPLE_MS = 250;
+/** Minimum duration of one synthetic screen-text cue, in seconds. */
+const SCREEN_TEXT_MIN_CUE_SECONDS = 0.5;
+/** Tail duration when the captured line never changes, in seconds. */
+const SCREEN_TEXT_TAIL_SECONDS = 2;
 /**
  * How long our own json3 URL stays "ours". The PerformanceObserver reports a
  * resource only after its body finished (later than the fetch `finally`), so a
@@ -143,6 +155,12 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
   let graceTimer: ReturnType<typeof setTimeout> | null = null;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
 
+  // Screen-text fallback state (see startScreenTextCapture).
+  let screenTimer: ReturnType<typeof setInterval> | null = null;
+  let screenDeadline: ReturnType<typeof setTimeout> | null = null;
+  let screenLines: Array<{ text: string; at: number }> = [];
+  let screenLastText = '';
+
   // Our own json3 fetches, counted by exact URL (see SELF_URL_LINGER_MS).
   const selfUrls = new Map<string, number>();
   // Serialize production; force requests queue instead of racing.
@@ -164,6 +182,24 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
       graceTimer = null;
     }
   };
+
+  const clearScreenTextTimers = (): void => {
+    if (screenTimer !== null) {
+      clearInterval(screenTimer);
+      screenTimer = null;
+    }
+    if (screenDeadline !== null) {
+      clearTimeout(screenDeadline);
+      screenDeadline = null;
+    }
+  };
+
+  const resetScreenTextCapture = (): void => {
+    clearScreenTextTimers();
+    screenLines = [];
+    screenLastText = '';
+  };
+
   const resetCaptureState = (): void => {
     sourceUrl = '';
     sourceVid = '';
@@ -171,6 +207,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
     producedForUrl = '';
     clearNocuesTimer();
     clearGraceTimer();
+    resetScreenTextCapture();
   };
 
   /**
@@ -193,7 +230,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
 
   const activePlayer = (): PlayerElement | null => {
     try {
-      const id = isShortsHref(getHref()) ? 'shorts-player' : 'movie_player';
+      const id = isShortsHref(getHref()) ? PLAYER_DOM_ID.shorts : PLAYER_DOM_ID.movie;
       return pageDocument.getElementById(id) as PlayerElement | null;
     } catch {
       return null;
@@ -399,7 +436,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
     const src = sourceUrl;
     const lang = trackLangOf(src, getHref());
     try {
-      const json = await fetchJson3Retry(buildUrl(src, null, getHref()), videoId);
+      const json = await fetchJson3Retry(buildUrl(src, getHref()), videoId);
       // Three independent checks: capture-time filter, produce-start guard and
       // this post-await guard. The last one is what keeps a slow response for
       // the previous video from being posted under the new videoId.
@@ -452,7 +489,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
           /* ignore */
         }
         try {
-          const button = player.querySelector('.ytp-subtitles-button');
+          const button = player.querySelector(PAGE_SELECTORS.subtitlesButton);
           if (button instanceof HTMLElement) {
             const pressed = button.getAttribute('aria-pressed');
             const disabled = button.getAttribute('aria-disabled');
@@ -483,13 +520,129 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
     }
   };
 
+  /* ---- screen-text fallback -------------------------------------------- */
+
+  /** Caption text currently painted by the player, whitespace-normalized. */
+  const readScreenCaptionText = (): string => {
+    try {
+      // Prefer the painted line nodes; `.caption-window` is the fallback when
+      // the player renders a single window without segment children.
+      let nodes = Array.from(pageDocument.querySelectorAll(PAGE_SELECTORS.captionSegment));
+      if (nodes.length === 0) {
+        nodes = Array.from(pageDocument.querySelectorAll(PAGE_SELECTORS.captionWindow));
+      }
+      const parts: string[] = [];
+      for (const node of nodes) {
+        const raw = (node as { textContent?: string | null }).textContent;
+        if (typeof raw !== 'string') continue;
+        const text = raw.replace(/\s+/g, ' ').trim();
+        if (text.length > 0) parts.push(text);
+      }
+      return parts.join(' ').trim();
+    } catch {
+      return '';
+    }
+  };
+
+  /** Player clock for synthetic cue timestamps (0 when unreadable). */
+  const readScreenVideoTime = (): number => {
+    try {
+      const video = pageDocument.querySelector(PAGE_SELECTORS.video) as
+        | (Element & { currentTime?: number })
+        | null;
+      const time = video?.currentTime;
+      return typeof time === 'number' && Number.isFinite(time) ? Math.max(0, time) : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const buildScreenTextCues = (): Cue[] => {
+    const cues: Cue[] = [];
+    for (let index = 0; index < screenLines.length; index += 1) {
+      const line = screenLines[index]!;
+      const next = screenLines[index + 1];
+      const start = Math.max(0, line.at);
+      const end = next
+        ? Math.max(next.at, start + SCREEN_TEXT_MIN_CUE_SECONDS)
+        : start + SCREEN_TEXT_TAIL_SECONDS;
+      cues.push({ start, end, text: line.text });
+    }
+    return cues;
+  };
+
+  const finalizeScreenText = (videoId: string, failure: TranscriptFailureReason): void => {
+    clearScreenTextTimers();
+    // A real capture / navigation / teardown during the window wins.
+    if (videoId !== currentVid() || !wanted || sourceUrl) {
+      resetScreenTextCapture();
+      return;
+    }
+    const cues = buildScreenTextCues();
+    resetScreenTextCapture();
+    if (cues.length === 0) {
+      postFailed(videoId, failure);
+      return;
+    }
+    postCuesReady({ videoId, lang: 'en', kind: 'manual', cues });
+  };
+
+  /**
+   * Best-effort fallback after the nudge/timeout: YouTube's caption DOM is
+   * still rendered (we only make it transparent once the overlay is ready), so
+   * read its text for a bounded window and synthesize cues.
+   *
+   * Limitations: only lines that are actually painted while the video plays
+   * are captured, start times are sample wall-clock times (not true cue
+   * starts), and a paused/blank caption window yields no text, in which case
+   * the original classified failure is posted. A real timedtext capture aborts
+   * the scrape.
+   */
+  const startScreenTextCapture = (
+    videoId: string,
+    failure: TranscriptFailureReason,
+  ): void => {
+    if (screenTimer !== null || screenDeadline !== null) return;
+    if (videoId !== currentVid() || !wanted || sourceUrl) return;
+
+    resetScreenTextCapture();
+    const seen = new Set<string>();
+
+    const sample = (): void => {
+      try {
+        if (videoId !== currentVid() || !wanted || sourceUrl) {
+          resetScreenTextCapture();
+          return;
+        }
+        const text = readScreenCaptionText();
+        if (text.length === 0 || text === screenLastText) return;
+        screenLastText = text;
+        if (seen.has(text)) return;
+        seen.add(text);
+        screenLines.push({ text, at: readScreenVideoTime() });
+      } catch {
+        /* never throw into the page */
+      }
+    };
+
+    sample();
+    screenTimer = setInterval(sample, SCREEN_TEXT_SAMPLE_MS);
+    screenDeadline = setTimeout(
+      () => finalizeScreenText(videoId, failure),
+      SCREEN_TEXT_WINDOW_MS,
+    );
+  };
+
   const scheduleGrace = (videoId: string, failure: TranscriptFailureReason): void => {
     clearGraceTimer();
+    resetScreenTextCapture();
     graceTimer = setTimeout(() => {
       graceTimer = null;
       if (videoId !== currentVid() || !wanted) return;
       if (sourceUrl) return; // a capture raced the grace window — all good
-      postFailed(videoId, failure);
+      // Best-effort: the player may still be painting captions even though we
+      // could not sniff timedtext. Try the screen text before failing.
+      startScreenTextCapture(videoId, failure);
     }, NUDGE_GRACE_MS);
   };
 
@@ -573,6 +726,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
       const key = normKey(baseUrl, pageHref);
       sourceUrl = baseUrl; // always freshest pot
       sourceVid = videoIdHere;
+      resetScreenTextCapture(); // a real capture wins over the scrape
 
       if (key !== sourceKey) {
         sourceKey = key;
@@ -741,6 +895,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
   return () => {
     clearNocuesTimer();
     clearGraceTimer();
+    resetScreenTextCapture();
     if (pollTimer !== null) {
       clearInterval(pollTimer);
       pollTimer = null;

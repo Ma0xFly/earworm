@@ -6,18 +6,13 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { SessionState } from '@/features/session';
 import { SentenceText } from '@/features/reading/SentenceText';
+import { SESSION_STATUS_TEXT } from '@/lib/ui/status-text';
 import {
   computeFontSizePx,
   computeMaxWidthPx,
   computeOverlayAnchor,
   type OverlayPosition,
 } from './position';
-
-export type OverlayWordClickHandler = (
-  word: string,
-  index: number,
-  element: HTMLElement,
-) => void;
 
 export type OverlayViewProps = {
   state: SessionState;
@@ -31,7 +26,6 @@ export type OverlayViewProps = {
   /** Measured player width; 0 before T1 publishes the rect. */
   playerWidth?: number;
   onRetry?: () => void;
-  onWordClick?: OverlayWordClickHandler;
   /** How long the no-captions notice stays visible before fading. */
   noCaptionsFadeMs?: number;
 };
@@ -41,10 +35,6 @@ const WORD_INTERACTION_CSS = `
 [data-ew-overlay] [data-word] {
   pointer-events: auto;
   cursor: pointer;
-}
-[data-ew-overlay] [data-word]:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
 }
 `;
 
@@ -96,7 +86,7 @@ function NoCaptionsNotice({ fadeMs }: { fadeMs: number }) {
         opacity: faded ? 0 : 1,
       }}
     >
-      无字幕
+      {SESSION_STATUS_TEXT.noCaptions}
     </div>
   );
 }
@@ -104,7 +94,7 @@ function NoCaptionsNotice({ fadeMs }: { fadeMs: number }) {
 function LoadingNotice() {
   return (
     <div data-ew-status="acquiring" role="status" style={statusPillStyle}>
-      字幕载入中…
+      {SESSION_STATUS_TEXT.acquiring}
     </div>
   );
 }
@@ -122,7 +112,7 @@ function ErrorNotice({ onRetry }: { onRetry?: () => void }) {
         pointerEvents: 'auto',
       }}
     >
-      <span>字幕加载失败</span>
+      <span>{SESSION_STATUS_TEXT.error}</span>
       <button
         type="button"
         onClick={onRetry}
@@ -159,7 +149,6 @@ export function OverlayView({
   liftPx = 0,
   playerWidth = 0,
   onRetry,
-  onWordClick,
   noCaptionsFadeMs = NO_CAPTIONS_FADE_MS,
 }: OverlayViewProps) {
   // Ads and SPA transitions must clear the last painted sentence rather than
@@ -217,12 +206,7 @@ export function OverlayView({
       {showSentence && sentence ? (
         <>
           <div data-ew-line="en" style={pillStyle}>
-            <SentenceText
-              text={sentence.text}
-              cols={sentence.cols}
-              lang="en"
-              onWordClick={onWordClick}
-            />
+            <SentenceText text={sentence.text} cols={sentence.cols} lang="en" />
           </div>
           {sentence.zh ? (
             <div

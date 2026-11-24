@@ -1,6 +1,8 @@
 import { defineBackground } from 'wxt/utils/define-background';
 import { createMessageRouter, isRuntimeRequest } from '@/lib/messages';
 import { registerTranslationHandlers } from '@/lib/llm/translate-handler';
+import { registerDataHandlers } from '@/lib/data/assets-handler';
+import { errorMessage } from '@/lib/utils/error';
 
 /**
  * Background service worker: owns the LLM translation channel and its
@@ -13,6 +15,7 @@ import { registerTranslationHandlers } from '@/lib/llm/translate-handler';
 export default defineBackground(() => {
   const router = createMessageRouter();
   registerTranslationHandlers(router);
+  registerDataHandlers(router);
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!isRuntimeRequest(message)) return false;
@@ -23,7 +26,7 @@ export default defineBackground(() => {
       .catch((error: unknown) => {
         sendResponse({
           ok: false,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage(error),
         });
       });
     return true;

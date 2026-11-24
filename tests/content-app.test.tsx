@@ -46,7 +46,7 @@ describe('content app shell', () => {
     ui.unmount();
   });
 
-  it('activates native caption suppression with the overlay and cleans it up', async () => {
+  it('does not hide native captions before captions are ready, and mounts cleanly', async () => {
     let mounted: ReturnType<typeof mountContentApp> | null = null;
     await act(async () => {
       mounted = mountContentApp({ css: '/* test css */' });
@@ -57,14 +57,13 @@ describe('content app shell', () => {
     expect(host).not.toBeNull();
     expect(host?.shadowRoot?.querySelector('style')?.textContent).toContain('test css');
 
-    // The T8 overlay owns activation through installNativeCaptionSuppression();
-    // mounting the content app activates it and teardown must remove it.
-    expect(document.documentElement.getAttribute('data-earworm-active')).toBe('1');
-    expect(document.getElementById(NATIVE_CAPTION_STYLE_ID)).not.toBeNull();
+    // Real sessions start in acquiring; native captions must stay visible
+    // until the overlay has a ready track (see overlay lifecycle tests).
+    expect(document.documentElement.getAttribute('data-earworm-active')).toBeNull();
+    expect(document.getElementById(NATIVE_CAPTION_STYLE_ID)).toBeNull();
 
     act(() => unmountContentApp());
     expect(document.querySelector('earworm-root')).toBeNull();
     expect(document.getElementById(NATIVE_CAPTION_STYLE_ID)).toBeNull();
-    expect(document.documentElement.hasAttribute('data-earworm-active')).toBe(false);
   });
 });

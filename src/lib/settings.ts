@@ -107,14 +107,41 @@ export async function loadSettings(): Promise<Settings> {
   }
 }
 
-/** Merge and persist a partial settings update; resolves with the new value. */
+/** Serializes read-modify-write settings updates across all callers. */
+let settingsWriteQueue: Promise<void> = Promise.resolve();
+
+/**
+ * Run one settings write after every previously queued write settled.
+ *
+ * `saveSettings` is a load-modify-write; without serialization two quick
+ * toggles both read the same base and the later write drops the earlier patch.
+ * The queue tail is failure-tolerant (a rejected write must not wedge later
+ * writes), while the returned promise still rejects to the caller.
+ */
+function enqueueSettingsWrite<T>(task: () => Promise<T>): Promise<T> {
+  const run = settingsWriteQueue.then(task, task);
+  settingsWriteQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+/**
+ * Merge and persist a partial settings update; resolves with the new value.
+ *
+ * Queued: the load, merge and write of one patch happen before the next patch
+ * starts, so concurrent `set()` calls cannot lose each other's fields.
+ */
 export async function saveSettings(patch: SettingsPatch): Promise<Settings> {
-  const current = await loadSettings();
-  const next = mergePatch(current, patch);
-  const area = storageArea();
-  if (!area) return next;
-  await area.set({ [SETTINGS_STORAGE_KEY]: next });
-  return next;
+  return enqueueSettingsWrite(async () => {
+    const current = await loadSettings();
+    const next = mergePatch(current, patch);
+    const area = storageArea();
+    if (!area) return next;
+    await area.set({ [SETTINGS_STORAGE_KEY]: next });
+    return next;
+  });
 }
 
 /**

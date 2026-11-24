@@ -101,16 +101,16 @@ export function stripTlang(url: string, pageHref?: string): string {
 
 /**
  * Build the re-fetch URL from a captured player URL: preserve every parameter
- * (notably `pot` and `signature`), force `fmt=json3`, and always drop `tlang`
- * so the response is the source track, never an auto-translation. A
- * `tlangTarget` is re-added only for callers that explicitly want a translation
- * (Earworm v1 never does).
+ * (notably `pot` and `signature`), force `fmt=json3`, and always drop `tlang`.
+ *
+ * ADR-0002: translation tracks are out of scope for v1, so no caller may ask
+ * YouTube to machine-translate the track; every fetched payload is the source
+ * (manual English) track and the Chinese translation comes only from our LLM.
  */
-export function buildUrl(baseUrl: string, tlangTarget?: string | null, pageHref?: string): string {
+export function buildUrl(baseUrl: string, pageHref?: string): string {
   const u = new URL(baseUrl, pageBase(pageHref));
   u.searchParams.delete('tlang');
   u.searchParams.set('fmt', 'json3');
-  if (tlangTarget) u.searchParams.set('tlang', tlangTarget);
   return u.toString();
 }
 
