@@ -1,0 +1,88 @@
+/*
+ * Earworm shadow-root stylesheet.
+ *
+ * Tailwind v4 with PREFLIGHT DISABLED: we import theme + utilities only, never
+ * the bare `tailwindcss` entrypoint (which includes preflight). This sheet is
+ * injected into the shadow root via a `?inline` import, so it can never reset
+ * the host page. The shadcn/Radix token layer is mapped to `--ew-*` variables
+ * declared on `:host`.
+ */
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
+@import "tw-animate-css";
+
+/* Scan the whole src tree for utility class candidates. */
+@source "../../";
+
+@theme inline {
+  --color-background: var(--ew-background);
+  --color-foreground: var(--ew-foreground);
+  --color-card: var(--ew-card);
+  --color-card-foreground: var(--ew-card-foreground);
+  --color-popover: var(--ew-popover);
+  --color-popover-foreground: var(--ew-popover-foreground);
+  --color-primary: var(--ew-primary);
+  --color-primary-foreground: var(--ew-primary-foreground);
+  --color-secondary: var(--ew-secondary);
+  --color-secondary-foreground: var(--ew-secondary-foreground);
+  --color-muted: var(--ew-muted);
+  --color-muted-foreground: var(--ew-muted-foreground);
+  --color-accent: var(--ew-accent);
+  --color-accent-foreground: var(--ew-accent-foreground);
+  --color-destructive: var(--ew-destructive);
+  --color-border: var(--ew-border);
+  --color-input: var(--ew-input);
+  --color-ring: var(--ew-ring);
+  --radius-sm: calc(var(--ew-radius) - 4px);
+  --radius-md: calc(var(--ew-radius) - 2px);
+  --radius-lg: var(--ew-radius);
+  --radius-xl: calc(var(--ew-radius) + 4px);
+}
+
+:host {
+  /* Isolate inherited YouTube styles; custom properties survive `all`. */
+  all: initial;
+  display: block;
+
+  --ew-background: oklch(1 0 0);
+  --ew-foreground: oklch(0.145 0 0);
+  --ew-card: oklch(1 0 0);
+  --ew-card-foreground: oklch(0.145 0 0);
+  --ew-popover: oklch(1 0 0);
+  --ew-popover-foreground: oklch(0.145 0 0);
+  --ew-primary: oklch(0.205 0 0);
+  --ew-primary-foreground: oklch(0.985 0 0);
+  --ew-secondary: oklch(0.97 0 0);
+  --ew-secondary-foreground: oklch(0.205 0 0);
+  --ew-muted: oklch(0.97 0 0);
+  --ew-muted-foreground: oklch(0.556 0 0);
+  --ew-accent: oklch(0.97 0 0);
+  --ew-accent-foreground: oklch(0.205 0 0);
+  --ew-destructive: oklch(0.577 0.245 27.325);
+  --ew-border: oklch(0.922 0 0);
+  --ew-input: oklch(0.922 0 0);
+  --ew-ring: oklch(0.708 0 0);
+  --ew-radius: 0.625rem;
+
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans SC", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ew-foreground);
+  text-align: left;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The portal wrapper must not block the page; portal children opt back in. */
+[data-earworm-portal] {
+  pointer-events: none;
+}
+
+[data-earworm-portal] > * {
+  pointer-events: auto;
+}
+
+/* Native caption suppression lives in `src/lib/ui/page-style.ts` — a
+ * document-level <style>, because CSS inside this shadow root can never match
+ * the host page's caption window. */

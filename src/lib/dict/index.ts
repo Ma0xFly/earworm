@@ -1,0 +1,1 @@
+export { lookupWord } from './lookup';

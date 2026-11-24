@@ -1,0 +1,1 @@
+export { DictionaryPopup } from './DictionaryPopup';
