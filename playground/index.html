@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      The title / meta tags are read by the real `readVideoMeta()` (T13) to fill
+      the LLM prompt context. `scene.ts` rewrites them when the scene changes.
+    -->
+    <title>离线字幕调试 · Earworm Playground</title>
+    <meta name="title" content="Earworm 离线 Playground：用字幕学英语" />
+    <meta name="author" content="Earworm Dev" />
+  </head>
+  <body>
+    <header class="yt-header">
+      <a class="yt-brand" href="?scene=normal" aria-label="Earworm Playground 首页">
+        <span class="yt-brand-mark">▶</span>
+        <span class="yt-brand-text">Earworm<small>Playground</small></span>
+      </a>
+      <div class="yt-search" role="search" aria-label="模拟搜索框">
+        <input type="search" placeholder="搜索（这是离线演示，不会联网）" disabled />
+      </div>
+      <div class="yt-header-actions">
+        <span class="yt-chip" title="所有网络请求都被 mock 取代">离线</span>
+        <span class="yt-avatar" aria-hidden="true">EW</span>
+      </div>
+    </header>
+
+    <!-- Dev toolbar: scene switcher + continuous toggle + mock bridge stats. -->
+    <div id="dev-toolbar" class="dev-toolbar"></div>
+
+    <main class="watch-page">
+      <section class="primary-column">
+        <div id="movie_player" class="html5-video-player player-shell">
+          <video class="html5-main-video" playsinline preload="none"></video>
+          <div class="player-backdrop" aria-hidden="true">
+            <span class="player-watermark">Earworm · 离线演示播放器</span>
+          </div>
+
+          <div class="ytp-chrome-bottom">
+            <button
+              id="ew-play-toggle"
+              class="player-button"
+              type="button"
+              aria-label="播放 / 暂停"
+              title="播放 / 暂停"
+            >
+              <span id="ew-play-icon">▶</span>
+            </button>
+            <span class="player-time">
+              <span id="ew-time-current">0:00</span>
+              <span class="player-time-sep">/</span>
+              <span id="ew-time-total">0:45</span>
+            </span>
+            <div
+              id="ew-progress"
+              class="player-progress"
+              role="slider"
+              aria-label="播放进度"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+              tabindex="0"
+            >
+              <div id="ew-progress-fill" class="player-progress-fill"></div>
+            </div>
+            <span class="player-settings" aria-hidden="true">⚙</span>
+            <span class="player-cc" title="原生字幕层已被 Earworm 视觉抑制">CC</span>
+          </div>
+        </div>
+
+        <h1 id="video-title" class="video-title">
+          Earworm 离线 Playground：用字幕学英语
+        </h1>
+        <div class="video-meta-row">
+          <span class="channel-avatar" aria-hidden="true">EW</span>
+          <div class="video-meta-text">
+            <span id="video-channel" class="video-channel">Earworm Dev</span>
+            <span class="video-meta-sub">离线演示 · 无真实 YouTube / LLM 请求</span>
+          </div>
+          <button class="pill-button" type="button" disabled>订阅</button>
+        </div>
+
+        <div class="video-description">
+          <p>
+            这是一个离线调试页：真实的 <code>ContentApp</code> 渲染在 body 级 shadow
+            root 中，字幕由 fixture 经 <code>earworm:cues-ready</code> 注入，翻译由 mock
+            background 返回。
+          </p>
+          <p>
+            快捷键 <kbd>a</kbd> 上一句 · <kbd>s</kbd> 重复当前句 · <kbd>d</kbd> 下一句；点击右侧句子跳转；
+            点击英文字幕中的单词打开词典；右上角「模糊」开关可分别模糊英 / 中字幕。
+          </p>
+        </div>
+      </section>
+
+      <aside id="secondary" class="secondary-column">
+        <h2 class="secondary-title">接下来播放</h2>
+
+        <article class="rec-card">
+          <div class="rec-thumb rec-thumb-1" aria-hidden="true"></div>
+          <div class="rec-info">
+            <h3>影子跟读：把语调节奏练成本能</h3>
+            <p>English Daily · 12 分钟</p>
+          </div>
+        </article>
+        <article class="rec-card">
+          <div class="rec-thumb rec-thumb-2" aria-hidden="true"></div>
+          <div class="rec-info">
+            <h3>10 个最常用的英语短语动词</h3>
+            <p>Phrase Lab · 8 分钟</p>
+          </div>
+        </article>
+        <article class="rec-card">
+          <div class="rec-thumb rec-thumb-3" aria-hidden="true"></div>
+          <div class="rec-info">
+            <h3>用词根记忆：什么时候该查词典</h3>
+            <p>Word Notes · 15 分钟</p>
+          </div>
+        </article>
+        <article class="rec-card">
+          <div class="rec-thumb rec-thumb-4" aria-hidden="true"></div>
+          <div class="rec-info">
+            <h3>每天 2.5 分钟：小习惯的复利</h3>
+            <p>Slow English · 6 分钟</p>
+          </div>
+        </article>
+        <article class="rec-card">
+          <div class="rec-thumb rec-thumb-5" aria-hidden="true"></div>
+          <div class="rec-info">
+            <h3>看懂美剧口音：连读与弱读</h3>
+            <p>Listen Up · 21 分钟</p>
+          </div>
+        </article>
+        <article class="rec-card">
+          <div class="rec-thumb rec-thumb-6" aria-hidden="true"></div>
+          <div class="rec-info">
+            <h3>为什么逐句精听比泛听更有效</h3>
+            <p>Learning Science · 9 分钟</p>
+          </div>
+        </article>
+      </aside>
+    </main>
+
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>
