@@ -124,8 +124,11 @@ export function computePopupPosition(input: PopupPositionInput): PopupPosition {
   const spaceAbove = anchor.top - gap - topLimit;
   const spaceBelow = bottomLimit - (anchor.top + anchor.height) - gap;
 
-  const fitsAbove = popupHeight <= Math.max(0, spaceAbove);
-  const fitsBelow = popupHeight <= Math.max(0, spaceBelow);
+  // Before the first measurement (height 0) neither side "fits"; pick the
+  // roomier one and let the measured pass refine it. This avoids deadlocking
+  // at `maxHeight: 0` when a word sits exactly on a viewport edge.
+  const fitsAbove = popupHeight > 0 && popupHeight <= spaceAbove;
+  const fitsBelow = popupHeight > 0 && popupHeight <= spaceBelow;
 
   let placement: PopupPlacement;
   if (fitsAbove) placement = 'above';

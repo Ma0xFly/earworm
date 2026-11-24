@@ -110,9 +110,9 @@ describe('computePopupPosition', () => {
       }),
     );
 
-    // A zero-height card "fits" above, so the preferred side wins; the
-    // resulting coordinates still stay inside the margin box.
-    expect(position.placement).toBe('above');
+    // Nothing is measured yet: the roomier side wins (below), and the
+    // card is still clamped inside the margin box.
+    expect(position.placement).toBe('below');
     expect(position.left).toBe(POPUP_MARGIN_PX);
     expect(position.top).toBe(POPUP_MARGIN_PX);
   });
