@@ -13,22 +13,23 @@
  * Upstream: https://github.com/Nitrino/easysubs (transcript panel event isolation).
  * Full upstream MIT permission text: see NOTICE.
  */
-import { useCallback, useRef, type CSSProperties, type SyntheticEvent } from 'react';
+import {
+  useCallback,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+  type SyntheticEvent,
+} from 'react';
 import { PanelRightClose, XIcon } from 'lucide-react';
 import { useSession, type TranslationProgress } from '@/features/session';
 import { useSettings } from '@/lib/settings';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { SESSION_STATUS_TEXT } from '@/lib/ui/status-text';
 import { SentenceRow } from './SentenceRow';
 import { computeSidebarLayout } from './selectors';
 import { useSidebarEnvironment } from './useSidebarEnvironment';
 import { useAutoScroll } from './useAutoScroll';
-
-/** Same wording as the status pill / overlay states in ContentApp. */
-const ACQUIRING_TEXT = '字幕载入中…';
-const NO_CAPTIONS_TEXT = '无字幕';
-const ERROR_TEXT = '字幕获取失败';
-const EMPTY_TEXT = '暂无字幕';
 
 function stopPlayerEvent(event: SyntheticEvent): void {
   event.stopPropagation();
@@ -57,11 +58,20 @@ function TranslationStatus({ progress }: { progress: TranslationProgress }) {
   );
 }
 
-function StateNotice({ title, hint }: { title: string; hint?: string }) {
+function StateNotice({
+  title,
+  hint,
+  action,
+}: {
+  title: string;
+  hint?: string;
+  action?: ReactNode;
+}) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-1 px-4 text-center">
       <p className="text-sm font-medium text-foreground">{title}</p>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      {action}
     </div>
   );
 }
@@ -108,9 +118,27 @@ export function Sidebar() {
     active: visible && hasSentences,
   });
 
-  // Nothing to show until a video session exists; a hidden sidebar renders
-  // nothing at all (the future keyboard toggle / options re-open it).
-  if (!visible || state.status === 'idle') return null;
+  // Nothing to show before a session exists. When the panel is hidden but a
+  // session does exist, keep a small persistent reopen control: both close
+  // affordances live inside the panel, so without it a closed sidebar could
+  // never be reopened from the page.
+  if (state.status === 'idle') return null;
+
+  if (!visible) {
+    return (
+      <button
+        type="button"
+        data-earworm-sidebar-reopen
+        aria-label="显示字幕侧栏"
+        title="显示字幕侧栏"
+        onClick={() => set({ ui: { sidebar: true } })}
+        onPointerDown={stopPlayerEvent}
+        className="pointer-events-auto fixed right-3 top-3 z-50 inline-flex items-center rounded-full border border-border bg-background/95 px-2.5 py-1 text-xs font-medium text-foreground shadow-lg outline-none backdrop-blur-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        字幕
+      </button>
+    );
+  }
 
   const panelClassName = cn(
     'pointer-events-auto flex flex-col overflow-hidden rounded-xl border border-border',
@@ -192,19 +220,32 @@ export function Sidebar() {
       </header>
 
       {state.status === 'acquiring' ? (
-        <StateNotice title={ACQUIRING_TEXT} hint="正在获取视频字幕" />
+        <StateNotice title={SESSION_STATUS_TEXT.acquiring} hint="正在获取视频字幕" />
       ) : null}
 
       {state.status === 'no-captions' ? (
-        <StateNotice title={NO_CAPTIONS_TEXT} hint="该视频没有可用字幕" />
+        <StateNotice title={SESSION_STATUS_TEXT.noCaptions} hint="该视频没有可用字幕" />
       ) : null}
 
       {state.status === 'error' ? (
-        <StateNotice title={ERROR_TEXT} hint={state.error ?? '请稍后重试'} />
+        <StateNotice
+          title={SESSION_STATUS_TEXT.error}
+          hint={state.error ?? '请稍后重试'}
+          action={
+            <button
+              type="button"
+              data-acquisition-retry
+              className="mt-2 inline-flex items-center rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
+              onClick={handleRetryAll}
+            >
+              重试
+            </button>
+          }
+        />
       ) : null}
 
       {state.status === 'ready' && state.sentences.length === 0 ? (
-        <StateNotice title={EMPTY_TEXT} />
+        <StateNotice title={SESSION_STATUS_TEXT.empty} />
       ) : null}
 
       {hasSentences ? (

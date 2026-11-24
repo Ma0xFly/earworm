@@ -36,6 +36,7 @@ import {
   type TranslateBatchResponse,
 } from '@/lib/messages';
 import {
+  requestProduce,
   startTranscriptClient,
   videoIdFromLocation,
   type TranscriptFailureReason,
@@ -57,6 +58,7 @@ import {
   toLearningSentences,
 } from './pipeline';
 import type { SessionApi, SessionState, SessionStatus } from './types';
+import { errorMessage } from '@/lib/utils/error';
 
 /** Two translation requests in flight keeps the endpoint busy but polite. */
 export const TRANSLATION_CONCURRENCY = 2;
@@ -71,7 +73,10 @@ type ActiveSession = {
   /** Full offline span set per sentence; LLM union always starts from this. */
   offline: CollocationSpan[][];
   model: string;
+  /** A `{ok:true}` commit landed for this session. */
   committed: boolean;
+  /** A commit request is in flight (guards duplicate cache writes). */
+  commitInFlight: boolean;
   /** Sentence indexes with a single-sentence retry in flight. */
   retrying: Set<number>;
   retryingAll: boolean;
@@ -81,11 +86,6 @@ export type SessionEngineOptions = {
   settings: Settings;
   setSettings: (patch: SettingsPatch) => void;
 };
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.length > 0) return error.message;
-  return String(error);
-}
 
 /** Offline spans, never fatal: a highlight failure must not lose the track. */
 function offlineSpansOf(sentence: Sentence): CollocationSpan[] {
@@ -97,7 +97,7 @@ function offlineSpansOf(sentence: Sentence): CollocationSpan[] {
   }
 }
 
-function pendingIndexes(sentences: readonly LearningSentence[]): number[] {
+function failedIndexes(sentences: readonly LearningSentence[]): number[] {
   return sentences.flatMap((sentence, index) => (sentence.status === 'failed' ? [index] : []));
 }
 
@@ -218,24 +218,31 @@ export function useSessionEngine(options: SessionEngineOptions): SessionApi {
   );
 
   const commitIfComplete = useCallback(async (active: ActiveSession): Promise<void> => {
-    if (!active.cacheable || active.committed) return;
+    if (!active.cacheable || active.committed || active.commitInFlight) return;
     if (!isFullyTranslated(active.sentences)) return;
 
-    active.committed = true;
     const data: CachedTranslation = cachedTranslationFrom(
       active.sentences,
       active.model.length > 0 ? active.model : 'unknown',
       Date.now(),
     );
+
+    // Committed means the background acknowledged `{ok:true}`. A failed or
+    // dropped write leaves the session uncommitted so a later retry can try
+    // again once the background is healthy.
+    active.commitInFlight = true;
     try {
-      await sendRuntimeMessage({
+      const response = await sendRuntimeMessage<{ ok?: boolean } | undefined>({
         type: 'earworm:commit',
         videoId: active.videoId,
         cuesHash: active.cuesHash,
         data,
       });
+      if (response?.ok === true) active.committed = true;
     } catch {
       // A cache write must never block the learning session.
+    } finally {
+      active.commitInFlight = false;
     }
   }, []);
 
@@ -365,6 +372,7 @@ export function useSessionEngine(options: SessionEngineOptions): SessionApi {
         offline,
         model: '',
         committed: false,
+        commitInFlight: false,
         retrying: new Set(),
         retryingAll: false,
       };
@@ -448,11 +456,49 @@ export function useSessionEngine(options: SessionEngineOptions): SessionApi {
     [applyBatch, commitState, finishRun, requestTranslate],
   );
 
+  /**
+   * Retry a failed *acquisition* (no active session to retranslate).
+   *
+   * Acquisition failures never build an `ActiveSession`, so retrying them must
+   * ask the MAIN-world inject script for the track again. `force` bypasses the
+   * inject-side "already produced for this source" guard; a fresh
+   * `cues-ready`/`cues-failed` then drives the normal pipeline.
+   */
+  const retryAcquire = useCallback((): void => {
+    const current = stateRef.current;
+    const videoId = current.videoId;
+    if (!videoId) return;
+    if (current.status !== 'error' && current.status !== 'no-captions') return;
+
+    activeRef.current = null;
+    commitState(() => createInitialState(videoId));
+    try {
+      requestProduce({ videoId, force: true });
+    } catch (error) {
+      // The bridge is a plain postMessage; a throw here would be exceptional,
+      // but a retry must never take the page down with it.
+      console.warn('[earworm] failed to request caption retry:', error);
+    }
+  }, [commitState]);
+
   const retryAll = useCallback((): void => {
     const active = activeRef.current;
-    if (!active || active.retryingAll) return;
-    const indexes = pendingIndexes(active.sentences);
-    if (indexes.length === 0) return;
+    if (!active) {
+      // No active session: the failure happened during acquisition, so retry
+      // the acquisition itself instead of silently doing nothing.
+      retryAcquire();
+      return;
+    }
+    if (active.retryingAll) return;
+    const indexes = failedIndexes(active.sentences);
+    if (indexes.length === 0) {
+      // Everything is translated but the cache write did not land: retrying
+      // "all" retries the commit instead of being a no-op.
+      if (!active.committed && isFullyTranslated(active.sentences)) {
+        void commitIfComplete(active);
+      }
+      return;
+    }
 
     active.retryingAll = true;
     commitState((previous) => ({
@@ -469,7 +515,7 @@ export function useSessionEngine(options: SessionEngineOptions): SessionApi {
       active.retryingAll = false;
       if (activeRef.current === active) commitProgress(active);
     });
-  }, [commitState, finishRun, translateIndexes]);
+  }, [commitIfComplete, commitProgress, commitState, finishRun, retryAcquire, translateIndexes]);
 
   const seekToSentence = useCallback(
     (id: number): void => {

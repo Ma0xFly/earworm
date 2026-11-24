@@ -151,24 +151,31 @@ describe('background translation handlers', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects malformed commit data with ok:false', async () => {
-    const response = (await router.dispatch({
-      type: 'earworm:commit',
-      videoId: 'vid',
-      cuesHash: 'hash',
-      data: { zh: ['one'], cols: [], model: 'm', ts: 1 },
-    })) as { ok: boolean; error?: string };
-    expect(response.ok).toBe(false);
-    expect(response.error).toMatch(/invalid/i);
+  it('drops malformed commit data before the handler and never caches it', async () => {
+    // The shared cache validator runs in the message router: misaligned
+    // columns and empty Chinese lines are not even dispatched.
+    await expect(
+      router.dispatch({
+        type: 'earworm:commit',
+        videoId: 'vid',
+        cuesHash: 'hash',
+        data: { zh: ['one'], cols: [], model: 'm', ts: 1 },
+      }),
+    ).resolves.toBeUndefined();
 
     // A partial run (one sentence without zh) must never enter the cache.
-    const partial = (await router.dispatch({
-      type: 'earworm:commit',
-      videoId: 'vid',
-      cuesHash: 'hash',
-      data: { zh: ['one', ''], cols: [[], []], model: 'm', ts: 1 },
-    })) as { ok: boolean; error?: string };
-    expect(partial.ok).toBe(false);
+    await expect(
+      router.dispatch({
+        type: 'earworm:commit',
+        videoId: 'vid',
+        cuesHash: 'hash',
+        data: { zh: ['one', ''], cols: [[], []], model: 'm', ts: 1 },
+      }),
+    ).resolves.toBeUndefined();
+
+    await expect(
+      router.dispatch({ type: 'earworm:get-cached', videoId: 'vid', cuesHash: 'hash' }),
+    ).resolves.toEqual({ hit: false });
   });
 
   it('clears the translation cache', async () => {

@@ -138,8 +138,9 @@ export function computeOverlayAnchor(
     case 'shorts':
       return {
         left: CENTERED_LEFT,
-        // 0.82 literals avoid the 1 - 0.18 floating-point tail in the CSS string.
-        top: 'calc(var(--ew-player-top) + var(--ew-player-height) * 0.82)',
+        // Keep the constant authoritative; toFixed avoids a long float tail in
+        // the generated CSS string.
+        top: `calc(var(--ew-player-top) + var(--ew-player-height) * ${(1 - SHORTS_BOTTOM_GAP_RATIO).toFixed(2)})`,
         transform: 'translate(-50%, -100%)',
       };
     case 'bottom':

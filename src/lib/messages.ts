@@ -6,6 +6,9 @@ import type {
   VideoMeta,
 } from './contracts';
 import type { TranscriptFailureReason } from './transcript';
+import { isValidCachedTranslation } from './cached-translation';
+import { isRecord } from './utils/is-record';
+import { errorMessage } from './utils/error';
 
 /* -------------------------------------------------------------------------- */
 /* inject (MAIN world) ↔ content (isolated world), window.postMessage bridge   */
@@ -45,10 +48,6 @@ export type ProducePayload = {
   videoId: string;
   force?: boolean;
 };
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
 
 export function isInjectEnvelope(value: unknown): value is InjectEnvelope {
   if (!isRecord(value)) return false;
@@ -192,19 +191,44 @@ export type ClearCacheRequest = { type: 'earworm:clear-cache' };
 
 export type ClearCacheResponse = { ok: true };
 
+/**
+ * Read one shipped data asset through the service worker.
+ *
+ * The isolated content world cannot fetch `chrome-extension://` URLs on
+ * youtube.com (Chrome rejects the cross-origin request), but the service
+ * worker can. Paths are restricted to our own `data/*.json` bundle.
+ */
+export type FetchDataRequest = {
+  type: 'earworm:fetch-data';
+  path: string;
+};
+
+export type FetchDataResponse =
+  | { ok: true; text: string }
+  | { ok: false; error: string };
+
 export type RuntimeRequest =
   | GetCachedRequest
   | TranslateBatchRequest
   | CommitRequest
   | TestLlmRequest
-  | ClearCacheRequest;
+  | ClearCacheRequest
+  | FetchDataRequest;
 
 export type RuntimeResponse =
   | GetCachedResponse
   | TranslateBatchResponse
   | CommitResponse
   | TestLlmResponse
-  | ClearCacheResponse;
+  | ClearCacheResponse
+  | FetchDataResponse;
+
+/** Only the shipped JSON assets may be read through the background. */
+export const DATA_ASSET_PATH_PATTERN = /^data\/[A-Za-z0-9][A-Za-z0-9._-]*\.json$/;
+
+export function isDataAssetPath(value: unknown): value is string {
+  return typeof value === 'string' && DATA_ASSET_PATH_PATTERN.test(value);
+}
 
 export type RuntimeRequestType = RuntimeRequest['type'];
 
@@ -214,6 +238,7 @@ const RUNTIME_REQUEST_TYPES: readonly RuntimeRequestType[] = [
   'earworm:commit',
   'earworm:test-llm',
   'earworm:clear-cache',
+  'earworm:fetch-data',
 ];
 
 function isNonEmptyString(value: unknown): value is string {
@@ -238,26 +263,6 @@ function isVideoMeta(value: unknown): value is VideoMeta {
   );
 }
 
-function isCachedTranslation(value: unknown): value is CachedTranslation {
-  if (!isRecord(value)) return false;
-  const cols = value.cols;
-  return (
-    isStringArray(value.zh) &&
-    Array.isArray(cols) &&
-    cols.every(
-      (sentenceCols) =>
-        Array.isArray(sentenceCols) &&
-        sentenceCols.every(
-          (collocation) =>
-            isRecord(collocation) &&
-            typeof collocation.text === 'string' &&
-            (collocation.note === undefined || typeof collocation.note === 'string'),
-        ),
-    ) &&
-    typeof value.model === 'string' &&
-    typeof value.ts === 'number'
-  );
-}
 
 function isTranslateBatchItem(value: unknown): value is TranslateBatchItem {
   if (!isRecord(value)) return false;
@@ -297,12 +302,14 @@ export function isRuntimeRequest(value: unknown): value is RuntimeRequest {
       return (
         isNonEmptyString(value.videoId) &&
         typeof value.cuesHash === 'string' &&
-        isCachedTranslation(value.data)
+        isValidCachedTranslation(value.data)
       );
     case 'earworm:test-llm':
       return isLlmSettings(value.llm);
     case 'earworm:clear-cache':
       return true;
+    case 'earworm:fetch-data':
+      return isDataAssetPath(value.path);
     default:
       return false;
   }
@@ -360,7 +367,7 @@ export function createMessageRouter(): MessageRouter {
       try {
         return await handler(message, sender ?? ({} as chrome.runtime.MessageSender));
       } catch (error) {
-        return { ok: false, error: error instanceof Error ? error.message : String(error) };
+        return { ok: false, error: errorMessage(error) };
       }
     },
   };

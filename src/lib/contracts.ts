@@ -3,7 +3,7 @@
  *
  * These types are the single source of truth for every feature. Later tickets
  * replace implementations but must keep these exported names, shapes and
- * units stable (see architecture.md §3).
+ * units stable (see `docs/adr/` and `GLOSSARY.md`).
  *
  * Units:
  * - `Cue` / `Sentence` times are seconds (float).
@@ -13,7 +13,7 @@
 
 export type Cue = { start: number; end: number; text: string };
 
-export type CueTrack = { videoId: string; lang: string; kind: 'manual' | 'asr'; cues: Cue[] };
+export type CueTrack = { videoId: string; lang: string; kind: 'manual'; cues: Cue[] };
 
 export type Sentence = {
   /** 0-based, ascending within one video. */

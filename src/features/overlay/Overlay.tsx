@@ -7,11 +7,7 @@ import { useEffect, useState } from 'react';
 import { useSession, type SessionStatus } from '@/features/session';
 import { isShortsHref } from '@/lib/transcript';
 import { installNativeCaptionSuppression } from '@/lib/ui/page-style';
-import {
-  OverlayView,
-  type OverlayViewProps,
-  type OverlayWordClickHandler,
-} from './OverlayView';
+import { OverlayView, type OverlayViewProps } from './OverlayView';
 import type { OverlayPosition } from './position';
 import { usePlayerSnapshot } from './use-player-snapshot';
 
@@ -21,11 +17,6 @@ export type OverlayProps = {
    * center / top / explicit Shorts anchor inside the player rect.
    */
   position?: OverlayPosition;
-  /**
-   * Dictionary hookup owned by T12. Until it lands this is a no-op pass-through,
-   * so the English line is already clickable and the contract is stable.
-   */
-  onWordClick?: OverlayWordClickHandler;
 };
 
 /**
@@ -74,19 +65,22 @@ function useSpaStale(
  * Mounted inside the T1 body-level shadow root, so it never appends to
  * `#movie_player` and survives player-ancestor transforms/overflow. Native
  * YouTube captions are suppressed at the document level with `opacity: 0`
- * (never `display: none`) while the overlay is active; the style and marker
- * are removed on teardown and no user caption settings are touched.
+ * (never `display: none`) only while a ready session is showing; the style
+ * and marker are removed on teardown and no user caption settings are touched.
  */
-export function Overlay({
-  position,
-  onWordClick,
-}: OverlayProps = {}) {
+export function Overlay({ position }: OverlayProps = {}) {
   const { state, retryAll } = useSession();
   const resolvedPosition = effectiveOverlayPosition(position);
   const player = usePlayerSnapshot(resolvedPosition);
   const stale = useSpaStale(state.videoId, state.status);
 
-  useEffect(() => installNativeCaptionSuppression(), []);
+  // Suppress YouTube's own captions only while the bilingual overlay actually
+  // has a ready track to show. On acquisition failure (no-captions/error) the
+  // page must keep native captions visible rather than blanking both.
+  useEffect(() => {
+    if (state.status !== 'ready') return undefined;
+    return installNativeCaptionSuppression();
+  }, [state.status]);
 
   const viewProps: OverlayViewProps = {
     state,
@@ -96,7 +90,6 @@ export function Overlay({
     liftPx: player.liftPx,
     playerWidth: player.playerWidth,
     onRetry: retryAll,
-    onWordClick,
   };
 
   return <OverlayView {...viewProps} />;

@@ -13,7 +13,9 @@
  */
 
 import type { CollocationSpan, Sentence } from '@/lib/contracts';
+import { fetchExtensionJson } from '@/lib/data-assets';
 import { getActiveDictionary, lemmatize } from '@/lib/dict';
+import { isPlainRecord as isRecord } from '@/lib/utils/is-record';
 import {
   buildCollocationIndex,
   matchIndexedCollocations,
@@ -70,10 +72,6 @@ let prepared: {
   dictionary: unknown;
   index: CollocationIndex;
 } | null = null;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function decodeMeta(value: unknown): CollocationMeta | null {
   if (!isRecord(value) || value.schema !== 1) return null;
@@ -182,11 +180,9 @@ export function loadCollocationTable(
 
   loading = (async () => {
     try {
-      const response = await fetchImpl(url);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} for ${url}`);
-      }
-      const decoded = decodeCollocationFile(await response.json());
+      const decoded = decodeCollocationFile(
+        await fetchExtensionJson(ASSET_FILE, fetchImpl, url),
+      );
       cachedEntries = decoded.entries;
       cachedMeta = decoded.meta;
       return cachedEntries;

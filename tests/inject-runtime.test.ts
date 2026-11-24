@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { startInjectRuntime } from '@/entrypoints/inject';
+import { SCREEN_TEXT_WINDOW_MS, startInjectRuntime } from '@/entrypoints/inject';
 import { createInjectEnvelope, INJECT_MESSAGE, type InjectEnvelope } from '@/lib/messages';
 import type { Cue } from '@/lib/contracts';
 import type { TranscriptFailureReason } from '@/lib/transcript/client';
@@ -58,9 +58,17 @@ type FakePlayer = {
   querySelector: ReturnType<typeof vi.fn>;
 };
 
-function fakeDocument(player: FakePlayer): Document {
+type FakePage = {
+  captions?: () => Array<{ textContent: string }>;
+  time?: () => number;
+};
+
+function fakeDocument(player: FakePlayer, page: FakePage = {}): Document {
   return {
     getElementById: (id: string) => (id === 'movie_player' ? player : null),
+    querySelector: (selector: string) =>
+      selector === 'video' ? { currentTime: page.time?.() ?? 0 } : null,
+    querySelectorAll: (_selector: string) => page.captions?.() ?? [],
   } as unknown as Document;
 }
 
@@ -116,7 +124,7 @@ describe('MAIN-world inject runtime', () => {
 
   function start(
     fetchImpl: (input: string | URL | Request, init?: RequestInit) => Promise<FakeResponse>,
-    options: { tracks?: unknown[]; response?: unknown } = {},
+    options: { tracks?: unknown[]; response?: unknown; page?: FakePage } = {},
   ): void {
     if (options.response !== undefined) player.getPlayerResponse.mockReturnValue(options.response);
     else if (options.tracks !== undefined) {
@@ -126,7 +134,7 @@ describe('MAIN-world inject runtime', () => {
     // it as the original when it installs its hook.
     window.fetch = vi.fn(async () => response({})) as unknown as typeof fetch;
     stop = startInjectRuntime({
-      pageDocument: fakeDocument(player),
+      pageDocument: fakeDocument(player, options.page),
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
   }
@@ -231,8 +239,68 @@ describe('MAIN-world inject runtime', () => {
     expect(player.setOption).toHaveBeenCalledWith('captions', 'track', { languageCode: 'en-GB' });
 
     await vi.advanceTimersByTimeAsync(3000);
+    // The nudge window ends, then the bounded screen-text fallback runs and
+    // (with no painted captions in the fake page) concedes the same failure.
+    expect(postedFailure()).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(SCREEN_TEXT_WINDOW_MS);
     expect(postedFailure()).toBe('nudge-failed');
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('synthesizes cues from painted screen text when nudging cannot be sniffed', async () => {
+    const fetchImpl = vi.fn(async () => response(englishJson));
+    const captions: Array<{ textContent: string }> = [];
+    let time = 10;
+    start(fetchImpl, {
+      tracks: [{ languageCode: 'en-GB' }],
+      page: { captions: () => captions, time: () => time },
+    });
+
+    produce('vid1');
+    await vi.advanceTimersByTimeAsync(8000 + 300 + 3000);
+
+    captions.push({ textContent: 'Hello there.' });
+    time = 10.5;
+    await vi.advanceTimersByTimeAsync(250);
+    captions[0] = { textContent: 'Second line.' };
+    time = 13;
+    await vi.advanceTimersByTimeAsync(250);
+    captions.length = 0;
+    await vi.advanceTimersByTimeAsync(SCREEN_TEXT_WINDOW_MS);
+
+    expect(posted().filter((message) => message.type === INJECT_MESSAGE.cuesFailed)).toHaveLength(0);
+    const ready = posted().find((message) => message.type === INJECT_MESSAGE.cuesReady);
+    expect(ready?.payload).toEqual({
+      videoId: 'vid1',
+      lang: 'en',
+      kind: 'manual',
+      cues: [
+        { start: 10.5, end: 13, text: 'Hello there.' },
+        { start: 13, end: 15, text: 'Second line.' },
+      ],
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('lets a real timedtext capture win over the screen-text fallback', async () => {
+    const fetchImpl = vi.fn(async () => response(englishJson));
+    const captions: Array<{ textContent: string }> = [{ textContent: 'Heard on screen.' }];
+    start(fetchImpl, {
+      tracks: [{ languageCode: 'en-GB' }],
+      page: { captions: () => captions, time: () => 4 },
+    });
+
+    produce('vid1');
+    await vi.advanceTimersByTimeAsync(8000 + 300 + 3000);
+    await vi.advanceTimersByTimeAsync(250);
+
+    await window.fetch(captured('vid1'));
+    await flush();
+    expect(posted().filter((message) => message.type === INJECT_MESSAGE.cuesReady)).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(SCREEN_TEXT_WINDOW_MS);
+    expect(posted().filter((message) => message.type === INJECT_MESSAGE.cuesReady)).toHaveLength(1);
+    expect(postedFailure()).toBeUndefined();
   });
 
   it('retries one transient HTTP failure before posting cues', async () => {
@@ -348,6 +416,7 @@ describe('MAIN-world inject runtime', () => {
     await vi.advanceTimersByTimeAsync(300);
     expect(player.setOption).toHaveBeenCalledWith('captions', 'track', { languageCode: 'en' });
     await vi.advanceTimersByTimeAsync(3000);
+    await vi.advanceTimersByTimeAsync(SCREEN_TEXT_WINDOW_MS);
     expect(postedFailure()).toBe('nudge-failed');
   });
 

@@ -1,5 +1,6 @@
 import type { LlmCollocation } from '@/lib/contracts';
 import type { TranslateBatchItem } from '@/lib/messages';
+import { isPlainRecord as isRecord } from '@/lib/utils/is-record';
 
 /**
  * Defensive parsing and span alignment for the strict JSON translation
@@ -37,10 +38,6 @@ export type ParsedTranslation = {
   /** Indices whose `zh` was missing or empty. */
   failed: number[];
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

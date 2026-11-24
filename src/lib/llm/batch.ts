@@ -17,6 +17,7 @@ import {
 } from './client';
 import { parseTranslationContent, ParseError } from './parse';
 import { buildPromptMessages } from './prompt';
+import { errorMessage } from '@/lib/utils/error';
 
 /**
  * Batch sizing and the one-retry translation policy.
@@ -60,11 +61,6 @@ function isRetryable(error: unknown): boolean {
   if (error instanceof LlmError) return error.retryable;
   if (error instanceof ParseError) return true;
   return false;
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.length > 0) return error.message;
-  return String(error);
 }
 
 /**

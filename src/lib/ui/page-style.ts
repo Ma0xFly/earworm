@@ -14,11 +14,13 @@
  * `opacity: 0` — never `display:none` / `visibility:hidden`: the screen-text
  * fallback and the player sniffing path still need to read the caption DOM.
  */
+import { CAPTION_SELECTOR, PAGE_SELECTORS } from './selectors';
+
 export const NATIVE_CAPTION_STYLE_ID = 'earworm-native-caption-style';
 
 export const NATIVE_CAPTION_SUPPRESSION_CSS = `
-html[data-earworm-active] .ytp-caption-window-container,
-html[data-earworm-active] .caption-window {
+html[data-earworm-active] ${PAGE_SELECTORS.captionWindowContainer},
+html[data-earworm-active] ${PAGE_SELECTORS.captionWindow} {
   opacity: 0 !important;
   pointer-events: none !important;
 }
@@ -30,8 +32,6 @@ html[data-earworm-active] .caption-window {
  * get `aria-hidden="true"` while Earworm owns the screen; the previous value
  * (usually absent) is restored on cleanup.
  */
-const CAPTION_SELECTOR = '.ytp-caption-window-container, .caption-window';
-
 export type NativeCaptionCleanup = () => void;
 
 type CaptionA11yState = {

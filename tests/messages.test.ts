@@ -123,6 +123,23 @@ describe('runtime request validation', () => {
     expect(
       isRuntimeRequest({ type: 'earworm:commit', videoId: 'v', cuesHash: 'h', data: { zh: [] } }),
     ).toBe(false);
+    // Same schema as the cache: empty lines and misaligned columns are invalid.
+    expect(
+      isRuntimeRequest({
+        type: 'earworm:commit',
+        videoId: 'v',
+        cuesHash: 'h',
+        data: { ...validTranslation, zh: [''] },
+      }),
+    ).toBe(false);
+    expect(
+      isRuntimeRequest({
+        type: 'earworm:commit',
+        videoId: 'v',
+        cuesHash: 'h',
+        data: { ...validTranslation, cols: [] },
+      }),
+    ).toBe(false);
   });
 
   it('forwards requests through chrome.runtime.sendMessage', async () => {

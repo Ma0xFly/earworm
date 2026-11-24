@@ -205,6 +205,16 @@ describe('sidebar states', () => {
     expect(document.querySelector('[data-sentence-id]')).toBeNull();
   });
 
+  it('offers a retry that re-acquires captions in the error state', async () => {
+    const api = makeSession({ status: 'error', error: 'timeout' });
+    await renderSidebar(api);
+
+    const retry = within(panel() as HTMLElement).getByRole('button', { name: '重试' });
+    fireEvent.click(retry);
+
+    expect(api.retryAll).toHaveBeenCalledTimes(1);
+  });
+
   it('shows an empty state when ready but no sentences exist', async () => {
     await renderSidebar(makeSession({ status: 'ready', sentences: [] }));
     expect(panel()?.textContent).toContain('暂无字幕');
@@ -226,6 +236,23 @@ describe('sidebar visibility', () => {
     await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
 
     await waitFor(() => expect(panel()).toBeNull());
+  });
+
+  it('offers a persistent reopen control while the sidebar is hidden', async () => {
+    seedStorage(SETTINGS_STORAGE_KEY, {
+      ...DEFAULT_SETTINGS,
+      ui: { sidebar: false },
+    });
+    await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
+
+    await waitFor(() => expect(panel()).toBeNull());
+    const reopen = document.querySelector<HTMLElement>('[data-earworm-sidebar-reopen]');
+    expect(reopen).not.toBeNull();
+    expect(reopen).toHaveAccessibleName('显示字幕侧栏');
+    expect(reopen?.className).toContain('pointer-events-auto');
+
+    fireEvent.click(reopen as HTMLElement);
+    await waitFor(() => expect(panel()).not.toBeNull());
   });
 
   it('closes the panel through the header toggle', async () => {

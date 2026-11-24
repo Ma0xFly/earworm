@@ -11,8 +11,11 @@
  * Behaviour:
  * - rAF is the primary clock; `timeupdate` is the fallback when frames are
  *   throttled (background tab, hidden element).
- * - `playRange(start, end)` seeks to `start`, plays, and pauses once when the
- *   playhead reaches `end`. `end` is clamped to `duration - 0.05` so the last
+ * - `playRange(start, end)` seeks to `start` and pauses once when the playhead
+ *   reaches `end`. A sentence pause is the default: the range plays from its
+ *   start. With `pauseAtEnd: false` (continuous mode) the range never pauses,
+ *   and playback state is preserved: a paused video stays paused and a playing
+ *   video keeps playing. `end` is clamped to `duration - 0.05` so the last
  *   sentence of a video can pause before the `ended` boundary.
  * - A sentence range covers merged cues, so its end is already the maximum of
  *   the covered cue ends; evaluating the single active range per frame is the
@@ -149,8 +152,11 @@ class PlaybackController implements PlayerController {
       latched: false,
     };
 
+    // Spec F3/T10: continuous mode seeks without changing the play state. A
+    // sentence pause (the default) always plays from the sentence start.
+    const wasPlaying = this.isPlaying();
     this.seekInternal(start);
-    this.play();
+    if (opts.pauseAtEnd || wasPlaying) this.play();
     this.evaluateRange();
   }
 

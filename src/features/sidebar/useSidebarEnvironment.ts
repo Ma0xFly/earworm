@@ -1,20 +1,12 @@
 import { useEffect, useState } from 'react';
+import { findSidebarPlayer } from '@/lib/ui/selectors';
 import {
   readSidebarEnvironment,
   sameSidebarEnvironment,
-  SIDEBAR_SELECTORS,
   type SidebarEnvironment,
 } from './selectors';
 
 const REFRESH_DELAYS_MS = [250, 1000, 2500] as const;
-
-function getPlayer(doc: Document): Element | null {
-  return (
-    doc.querySelector(SIDEBAR_SELECTORS.player) ??
-    doc.querySelector(SIDEBAR_SELECTORS.playerFallback) ??
-    doc.querySelector('video')
-  );
-}
 
 /**
  * Keep a measured `SidebarEnvironment` in sync with the page.
@@ -45,7 +37,7 @@ export function useSidebarEnvironment(doc: Document = document): SidebarEnvironm
     };
 
     const watchPlayer = (): void => {
-      const player = getPlayer(doc);
+      const player = findSidebarPlayer(doc);
       if (player === observedPlayer) return;
       observedPlayer = player;
       classObserver?.disconnect();

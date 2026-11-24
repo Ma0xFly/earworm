@@ -62,6 +62,23 @@ describe('settings', () => {
     await expect(loadSettings()).resolves.toEqual(saved);
   });
 
+  it('serializes rapid patches so neither update is lost', async () => {
+    seedStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
+
+    // Two independent quick toggles (e.g. two switches clicked before the
+    // first storage write resolves) must both land: no read-modify-write race.
+    const first = saveSettings({ blur: { en: true } });
+    const second = saveSettings({ playback: { continuous: true } });
+    const [firstSettings, secondSettings] = await Promise.all([first, second]);
+
+    expect(firstSettings.blur.en).toBe(true);
+    expect(secondSettings.blur.en).toBe(true);
+    expect(secondSettings.playback.continuous).toBe(true);
+    const stored = readStorage(SETTINGS_STORAGE_KEY) as Settings;
+    expect(stored.blur).toEqual({ en: true, zh: false });
+    expect(stored.playback.continuous).toBe(true);
+  });
+
   it('notifies subscribers of local settings changes and unsubscribes cleanly', async () => {
     const listener = vi.fn();
     const unsubscribe = subscribeSettings(listener);

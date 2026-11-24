@@ -126,15 +126,33 @@ describe('PlayerController', () => {
     expect(video.pauseCalls).toBe(1);
   });
 
-  it('does not pause when pauseAtEnd is false', () => {
+  it('does not pause and does not force playback when pauseAtEnd is false', () => {
     attach();
     controller.playRange(0, 2, { pauseAtEnd: false });
+
+    // The video was paused before the seek; continuous navigation keeps it paused.
+    expect(video.currentTime).toBe(0);
+    expect(video.paused).toBe(true);
+    expect(video.playCalls).toBe(0);
 
     video.advance(3);
     raf.flush(2);
 
     expect(video.pauseCalls).toBe(0);
+    expect(video.paused).toBe(true);
+  });
+
+  it('keeps playing in continuous mode when the video was already playing', () => {
+    attach();
+    void video.play();
     expect(video.paused).toBe(false);
+    const playsBefore = video.playCalls;
+
+    controller.playRange(2, 4, { pauseAtEnd: false });
+
+    expect(video.currentTime).toBe(2);
+    expect(video.paused).toBe(false);
+    expect(video.playCalls).toBeGreaterThan(playsBefore);
   });
 
   it('uses timeupdate as a fallback when animation frames do not run', () => {

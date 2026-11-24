@@ -425,12 +425,20 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     });
     fireEvent.click(continuous);
     await waitFor(() => expect(playRange).toHaveBeenCalled());
+
+    // Continuous mode preserves the player's play/pause state: with the video
+    // paused, navigation seeks without starting playback.
+    act(() => video.pause());
+    const playsBefore = video.playCalls;
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }));
     });
     await waitFor(() =>
       expect(playRange).toHaveBeenLastCalledWith(3.5, 5, { pauseAtEnd: false }),
     );
+    expect(video.currentTime).toBeCloseTo(3.5, 5);
+    expect(video.paused).toBe(true);
+    expect(video.playCalls).toBe(playsBefore);
 
     // Focused inputs keep native typing: no seek, no current-row change.
     const before = video.currentTime;

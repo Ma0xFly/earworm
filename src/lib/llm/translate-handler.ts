@@ -8,6 +8,7 @@ import {
 } from './cache';
 import { requestChatCompletion } from './client';
 import { buildPromptMessages } from './prompt';
+import { errorMessage } from '@/lib/utils/error';
 
 /**
  * Background translation handlers.
@@ -20,11 +21,6 @@ import { buildPromptMessages } from './prompt';
 /** The connection test is interactive; do not make the options page wait 2 min. */
 const TEST_LLM_TIMEOUT_MS = 30_000;
 const TEST_SAMPLE_MAX_CHARS = 240;
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.length > 0) return error.message;
-  return String(error);
-}
 
 function truncateSample(content: string): string {
   const normalized = content.trim();
