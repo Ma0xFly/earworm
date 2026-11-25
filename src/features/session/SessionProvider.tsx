@@ -32,7 +32,6 @@ export const idleSessionApi: SessionApi = {
   retrySentence: noop,
   retryAll: noop,
   setContinuous: noop,
-  toggleSidebar: noop,
 };
 
 const SessionContext = createContext<SessionApi>(idleSessionApi);
@@ -48,7 +47,6 @@ export function SessionProvider({ children }: { children?: ReactNode }) {
       retrySentence: engine.retrySentence,
       retryAll: engine.retryAll,
       setContinuous: engine.setContinuous,
-      toggleSidebar: engine.toggleSidebar,
     }),
     [
       engine.state,
@@ -56,7 +54,6 @@ export function SessionProvider({ children }: { children?: ReactNode }) {
       engine.retrySentence,
       engine.retryAll,
       engine.setContinuous,
-      engine.toggleSidebar,
     ],
   );
 

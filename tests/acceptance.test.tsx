@@ -1,8 +1,8 @@
 /**
  * End-to-end acceptance tests for the integrated content app (T16 / spec §7).
  *
- * These mount the REAL `ContentApp` (session engine, overlay, sidebar, blur,
- * dictionary, keyboard shortcuts) in a shadow root and drive it through the
+ * These mount the REAL `ContentApp` (session engine, overlay, blur, dictionary,
+ * keyboard shortcuts, quick menu) in a shadow root and drive it through the
  * real window bridge with mocked `chrome.runtime` + offline data. Only the
  * expensive/network boundaries are mocked:
  *
@@ -26,7 +26,7 @@ import {
   type WordEntry,
 } from '@/lib/contracts';
 import { resetCollocationTable, setCollocationTable } from '@/lib/collocations';
-import { SETTINGS_STORAGE_KEY } from '@/lib/settings';
+import { saveSettings, SETTINGS_STORAGE_KEY } from '@/lib/settings';
 import {
   INJECT_MESSAGE,
   type CommitRequest,
@@ -45,7 +45,6 @@ import {
   unmountContentApp,
   type MountedContentApp,
 } from '@/features/app/boot';
-import { SIDEBAR_HOST_TAG } from '@/features/sidebar/host';
 import { seedStorage } from './mocks/chrome';
 import { FakeVideo } from './mocks/video';
 
@@ -170,30 +169,14 @@ function installRuntime(): RuntimeHarness {
 
 let mounted: MountedContentApp | null = null;
 
-/** The document-flow host inserted into the recommended-videos column. */
-function sidebarHost(): HTMLElement | null {
-  return document.querySelector<HTMLElement>(SIDEBAR_HOST_TAG);
+/** The current sentence, as painted by the bilingual overlay. */
+function currentEnglish(app: MountedContentApp): string {
+  return overlayLine(app, 'en')?.textContent ?? '';
 }
 
-/**
- * Where the sentence list currently renders: the nested sidebar shadow root
- * when the right column is available, otherwise the body-level shadow root.
- */
-function sidebarRoot(app: MountedContentApp): ParentNode {
-  return sidebarHost()?.shadowRoot ?? app.ui.container;
-}
-
-function sidebarQuery<T extends Element>(
-  app: MountedContentApp,
-  selector: string,
-): T | null {
-  return sidebarRoot(app).querySelector<T>(selector);
-}
-
-function rowsOf(app: MountedContentApp): HTMLElement[] {
-  return Array.from(
-    sidebarRoot(app).querySelectorAll<HTMLElement>('[data-sentence-id]'),
-  );
+/** The recommended column must stay exactly as YouTube rendered it. */
+function recommendedColumn(): Element | null {
+  return document.querySelector('#secondary-inner');
 }
 
 function overlayOf(app: MountedContentApp): HTMLElement | null {
@@ -211,6 +194,10 @@ function overlayLine(
 
 /** Open the control-bar quick menu and return its shadow-root surface. */
 async function openQuickMenu(app: MountedContentApp): Promise<HTMLElement> {
+  const existing = app.ui.portalContainer.querySelector<HTMLElement>(
+    '[data-earworm-quick-menu]',
+  );
+  if (existing) return existing;
   const arrow = document
     .querySelector('earworm-quick-toggle-host')
     ?.shadowRoot?.querySelector<HTMLElement>('[data-earworm-quick-menu-trigger]');
@@ -228,27 +215,24 @@ async function openQuickMenu(app: MountedContentApp): Promise<HTMLElement> {
   return menu;
 }
 
+/** Translation status lives in the quick menu after the sidebar removal. */
+async function translationProgress(app: MountedContentApp): Promise<{
+  label: string;
+  failed: string | null;
+}> {
+  const menu = await openQuickMenu(app);
+  return {
+    label:
+      menu.querySelector<HTMLElement>('[data-translation-progress]')?.textContent ?? '',
+    failed:
+      menu.querySelector<HTMLElement>('[data-translation-failed]')?.textContent ?? null,
+  };
+}
+
 async function mountApp(): Promise<{
   app: MountedContentApp;
   video: FakeVideo;
 }> {
-  // happy-dom has no layout: give the recommended column a real watch-page
-  // width so the docked (document-flow) placement is exercised.
-  const secondary = document.querySelector<HTMLElement>('#secondary');
-  if (secondary) {
-    secondary.getBoundingClientRect = () =>
-      ({
-        x: 1016,
-        y: 120,
-        top: 120,
-        left: 1016,
-        right: 1416,
-        bottom: 900,
-        width: 400,
-        height: 780,
-      }) as DOMRect;
-  }
-
   let app!: MountedContentApp;
   await act(async () => {
     app = mountContentApp({ css: '' });
@@ -342,7 +326,7 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/watch?v=vid1');
   seedStorage(SETTINGS_STORAGE_KEY, {
     ...DEFAULT_SETTINGS,
-    ui: { enabled: true, sidebar: true },
+    ui: { enabled: true },
   });
 
   resetCollocationTable();
@@ -372,7 +356,7 @@ afterEach(() => {
 /* -------------------------------------------------------------------------- */
 
 describe('acceptance: cue → sentence → highlight → translation → UI', () => {
-  it('merges cues, shows offline spans before translation, then bilingual overlay + sidebar', async () => {
+  it('merges cues, shows offline spans before translation, then bilingual overlay', async () => {
     const harness = installRuntime();
     const { app, video } = await mountApp();
     video.advance(3.5); // current sentence = "I give up."
@@ -393,23 +377,14 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     });
 
     await deliverCues();
-    await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
+    await waitFor(() => expect(currentEnglish(app)).toBe('I give up.'));
 
-    // Spec F2 (§7.1): the panel is the first child of the right column, in
-    // document flow, so the recommended videos are pushed below it.
-    const host = sidebarHost();
-    const inner = document.querySelector('#secondary-inner');
-    expect(host).not.toBeNull();
-    expect(inner?.firstElementChild).toBe(host);
-    expect(inner?.children[1]).toHaveAttribute('data-recommended');
-    const dockedPanel = sidebarQuery<HTMLElement>(app, '[data-earworm-sidebar]');
-    expect(dockedPanel).toHaveAttribute('data-mode', 'docked');
-    expect(dockedPanel?.style.position).toBe('');
-    expect(dockedPanel?.style.width).toBe('100%');
-
-    // T2 merged "Hello" + "there." into one sentence.
-    expect(rowsOf(app)[0]?.textContent).toContain('Hello there.');
-    expect(rowsOf(app)[1]?.textContent).toContain('I give up.');
+    // The recommended column keeps YouTube's own content; no panel is injected.
+    expect(document.querySelector('earworm-sidebar-host')).toBeNull();
+    expect(document.querySelector('[data-earworm-sidebar]')).toBeNull();
+    const inner = recommendedColumn();
+    expect(inner?.children).toHaveLength(1);
+    expect(inner?.firstElementChild).toHaveAttribute('data-recommended');
 
     // T6 offline span is visible immediately, before any translation arrives.
     await waitFor(() => {
@@ -418,11 +393,17 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       );
       expect(mark?.textContent).toBe('give up');
     });
-    expect(
-      rowsOf(app)[1]?.querySelector('[data-collocation="offline"]'),
-    ).not.toBeNull();
     expect(overlayLine(app, 'zh')).toBeNull();
-    expect(rowsOf(app)[1]?.textContent).toContain('翻译中…');
+
+    // The merge produced "Hello there." as the first 字幕句; a/s/d reaches it.
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    });
+    await waitFor(() => expect(currentEnglish(app)).toBe('Hello there.'));
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }));
+    });
+    await waitFor(() => expect(currentEnglish(app)).toBe('I give up.'));
 
     await waitFor(() => expect(releaseCache).toBeTypeOf('function'));
     await act(async () => {
@@ -430,12 +411,11 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    // Mocked translate-batch result reaches overlay + sidebar, and the LLM
-    // span replaces the offline one without duplicate highlighting.
+    // Mocked translate-batch result reaches the overlay; the LLM span replaces
+    // the offline one without duplicate highlighting.
     await waitFor(() => {
       expect(overlayLine(app, 'zh')?.textContent).toBe('我放弃。');
     });
-    expect(rowsOf(app)[1]?.textContent).toContain('我放弃。');
     await waitFor(() => {
       const marks = app.ui.container.querySelectorAll(
         '[data-ew-overlay] mark[data-collocation]',
@@ -443,6 +423,9 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       expect(marks).toHaveLength(1);
       expect(marks[0]?.getAttribute('data-collocation')).toBe('llm');
       expect(marks[0]?.textContent).toBe('give up');
+    });
+    await waitFor(async () => {
+      expect((await translationProgress(app)).label).toContain('翻译 2/2');
     });
 
     // The content script drove the background channel with the spec contract.
@@ -463,7 +446,7 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     const harness = installRuntime();
     const { app, video } = await mountApp();
     await deliverCues();
-    await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
+    await waitFor(() => expect(currentEnglish(app)).toBe('Hello there.'));
     await waitFor(() => expect(overlayLine(app, 'zh')?.textContent).toBe('你好。'));
 
     const playRange = vi.spyOn(playerController, 'playRange');
@@ -472,7 +455,7 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }));
     });
-    await waitFor(() => expect(rowsOf(app)[1]).toHaveAttribute('aria-current', 'true'));
+    await waitFor(() => expect(currentEnglish(app)).toBe('I give up.'));
     expect(video.currentTime).toBeCloseTo(3.5, 5);
     expect(video.playCalls).toBeGreaterThan(0);
     expect(playRange).toHaveBeenLastCalledWith(3.5, 5, { pauseAtEnd: true });
@@ -481,33 +464,10 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
     });
-    await waitFor(() => expect(rowsOf(app)[0]).toHaveAttribute('aria-current', 'true'));
+    await waitFor(() => expect(currentEnglish(app)).toBe('Hello there.'));
     expect(video.currentTime).toBeCloseTo(0, 5);
 
-    // The sidebar's continuous toggle flips the payload to pauseAtEnd:false.
-    const continuous = await waitFor(() => {
-      const element = sidebarQuery<HTMLElement>(app, '[aria-label="连续播放"]');
-      expect(element).not.toBeNull();
-      return element!;
-    });
-    fireEvent.click(continuous);
-    await waitFor(() => expect(playRange).toHaveBeenCalled());
-
-    // Continuous mode preserves the player's play/pause state: with the video
-    // paused, navigation seeks without starting playback.
-    act(() => video.pause());
-    const playsBefore = video.playCalls;
-    await act(async () => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }));
-    });
-    await waitFor(() =>
-      expect(playRange).toHaveBeenLastCalledWith(3.5, 5, { pauseAtEnd: false }),
-    );
-    expect(video.currentTime).toBeCloseTo(3.5, 5);
-    expect(video.paused).toBe(true);
-    expect(video.playCalls).toBe(playsBefore);
-
-    // Focused inputs keep native typing: no seek, no current-row change.
+    // Focused inputs keep native typing: no seek, no sentence change.
     const before = video.currentTime;
     const input = document.createElement('input');
     section().appendChild(input);
@@ -518,8 +478,29 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       );
     });
     expect(video.currentTime).toBe(before);
-    expect(rowsOf(app)[1]).toHaveAttribute('aria-current', 'true');
+    expect(currentEnglish(app)).toBe('Hello there.');
     input.remove();
+    playRange.mockRestore();
+  });
+
+  it('honours the persisted continuous-playback setting without a sidebar', async () => {
+    // The in-page continuous switch moved out with the sidebar; the persisted
+    // setting (also exposed on the options page) must still drive playback.
+    await act(async () => {
+      await saveSettings({ playback: { continuous: true } });
+    });
+    const { app, video } = await mountApp();
+    await deliverCues();
+    await waitFor(() => expect(currentEnglish(app)).toBe('Hello there.'));
+
+    const playRange = vi.spyOn(playerController, 'playRange');
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }));
+    });
+    await waitFor(() =>
+      expect(playRange).toHaveBeenLastCalledWith(3.5, 5, { pauseAtEnd: false }),
+    );
+    expect(video.currentTime).toBeCloseTo(3.5, 5);
     playRange.mockRestore();
   });
 
@@ -529,8 +510,7 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     await waitFor(() => expect(overlayLine(app, 'zh')?.textContent).toBe('你好。'));
 
     const root = app.ui.container.querySelector<HTMLElement>('[data-earworm-root]')!;
-    const host = sidebarHost();
-    expect(host).not.toBeNull();
+    expect(document.querySelector('earworm-sidebar-host')).toBeNull();
     const menu = await openQuickMenu(app);
     const enSwitch = await waitFor(() => {
       const element = menu.querySelector<HTMLElement>('[aria-label="模糊英文"]');
@@ -544,17 +524,6 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       expect(root).toHaveAttribute('data-blur-en', '1');
       expect(root).toHaveAttribute('data-blur-zh', '0');
     });
-    // The nested shadow root cannot see the app root's attributes: the docked
-    // host mirrors them so `:host([data-blur-en="1"])` keeps the sidebar in sync.
-    // (happy-dom does not invalidate `:host`-rooted computed styles for deep
-    // descendants, so the nested blur is asserted on the host attributes +
-    // injected sheet here and in sidebar.test.tsx.)
-    await waitFor(() => expect(host).toHaveAttribute('data-blur-en', '1'));
-    expect(host).toHaveAttribute('data-blur-zh', '0');
-    expect(
-      host?.shadowRoot?.querySelector('style[data-earworm-style]')?.textContent,
-    ).toContain(':host([data-blur-zh="1"]) [data-lang="zh"]');
-
     const enText = overlayLine(app, 'en')?.querySelector('[data-lang="en"]');
     expect(enText).not.toBeNull();
     await waitFor(() =>
@@ -568,7 +537,6 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       expect(root).toHaveAttribute('data-blur-en', '1');
       expect(root).toHaveAttribute('data-blur-zh', '1');
     });
-    await waitFor(() => expect(host).toHaveAttribute('data-blur-zh', '1'));
     // Re-query: the toggle re-render may replace the overlay line node.
     const zhBlurred = overlayLine(app, 'zh');
     expect(zhBlurred).not.toBeNull();
@@ -613,39 +581,12 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     expect(card?.querySelector('[data-ew-dict-note]')?.textContent).toBe('放弃');
   });
 
-  it('opens the dictionary popup for a word clicked inside the docked sidebar', async () => {
-    const { app } = await mountApp();
+  it('leaves a replaced recommended column alone and still opens the overlay dictionary', async () => {
+    const { app, video } = await mountApp();
+    video.advance(3.5);
     await deliverCues();
-    await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
+    await waitFor(() => expect(currentEnglish(app)).toBe('I give up.'));
 
-    const word = await waitFor(() => {
-      const element = sidebarQuery<HTMLElement>(
-        app,
-        '[data-sentence-id="1"] [data-word="give"]',
-      );
-      expect(element).not.toBeNull();
-      return element!;
-    });
-    fireEvent.click(word);
-
-    // The card still renders in the body-level root's portal container: clicking
-    // a word in the nested shadow tree must not lose the Radix portal.
-    await waitFor(() => {
-      const card = app.ui.portalContainer.querySelector('[data-earworm-dictionary]');
-      expect(card).not.toBeNull();
-      expect(card).toHaveAttribute('data-state', 'ready');
-    });
-    expect(
-      app.ui.portalContainer.querySelector('[data-ew-dict-headword]')?.textContent,
-    ).toBe('give');
-  });
-
-  it('keeps the docked sidebar in a replaced recommended column', async () => {
-    const { app } = await mountApp();
-    await deliverCues();
-    await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
-
-    const host = sidebarHost();
     const secondary = document.querySelector('#secondary')!;
     const newInner = document.createElement('div');
     newInner.id = 'secondary-inner';
@@ -654,18 +595,30 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     newInner.appendChild(recommended);
     secondary.replaceChildren(newInner);
 
+    // The old sidebar re-inserted itself on column replacement; it must not.
     await act(async () => {
-      document.dispatchEvent(new Event('yt-navigate-finish'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    expect(newInner.children).toHaveLength(1);
+    expect(newInner.firstElementChild).toBe(recommended);
+    expect(document.querySelector('earworm-sidebar-host')).toBeNull();
+    expect(currentEnglish(app)).toBe('I give up.');
 
-    await waitFor(() => expect(newInner.firstElementChild).toBe(sidebarHost()));
-    expect(sidebarHost()).toBe(host);
-    expect(newInner.children[1]).toBe(recommended);
-    expect(rowsOf(app)).toHaveLength(2);
-    expect(sidebarQuery(app, '[data-earworm-sidebar]')).toHaveAttribute(
-      'data-mode',
-      'docked',
-    );
+    const word = await waitFor(() => {
+      const element = app.ui.container.querySelector<HTMLElement>(
+        '[data-ew-overlay] [data-word="give"]',
+      );
+      expect(element).not.toBeNull();
+      return element!;
+    });
+    fireEvent.click(word);
+    await waitFor(() => {
+      const card = app.ui.portalContainer.querySelector('[data-earworm-dictionary]');
+      expect(card).toHaveAttribute('data-state', 'ready');
+    });
+    expect(
+      app.ui.portalContainer.querySelector('[data-ew-dict-headword]')?.textContent,
+    ).toBe('give');
   });
 
   it('shows 无字幕 without requesting translation and leaves playback alone', async () => {
@@ -689,23 +642,35 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     const { app } = await mountApp();
 
     await deliverCues();
-    await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
-    await waitFor(() => {
-      expect(rowsOf(app)[0]?.textContent).toContain('你好。');
-      expect(rowsOf(app)[1]?.textContent).toContain('翻译失败');
-    });
+    await waitFor(() => expect(currentEnglish(app)).toBe('Hello there.'));
+    await waitFor(() => expect(overlayLine(app, 'zh')?.textContent).toBe('你好。'));
     // The failed sentence keeps its English; the successful one is bilingual.
-    expect(overlayLine(app, 'en')?.textContent).toContain('Hello there.');
-    expect(overlayLine(app, 'zh')?.textContent).toBe('你好。');
+    await waitFor(async () => {
+      expect((await translationProgress(app)).failed).toContain('失败 1');
+    });
     expect(harness.commitCalls).toHaveLength(0);
 
     harness.missing = new Set();
-    const retry = rowsOf(app)[1]?.querySelector<HTMLButtonElement>('button');
-    expect(retry?.textContent).toContain('重试');
-    fireEvent.click(retry!);
+    const menu = await openQuickMenu(app);
+    const retry = await waitFor(() => {
+      const button = Array.from(menu.querySelectorAll('button')).find((candidate) =>
+        candidate.textContent?.includes('重试'),
+      );
+      expect(button).not.toBeUndefined();
+      return button!;
+    });
+    fireEvent.click(retry);
 
-    await waitFor(() => expect(rowsOf(app)[1]?.textContent).toContain('我放弃。'));
     await waitFor(() => expect(harness.commitCalls).toHaveLength(1));
+    await waitFor(async () => {
+      const progress = await translationProgress(app);
+      expect(progress.label).toContain('翻译 2/2');
+      expect(progress.failed).toBeNull();
+    });
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }));
+    });
+    await waitFor(() => expect(overlayLine(app, 'zh')?.textContent).toBe('我放弃。'));
     expect(harness.translateCalls).toHaveLength(2);
     expect(harness.translateCalls[1]?.batch).toEqual([
       { i: 1, text: 'I give up.', prev: 'Hello there.' },
@@ -716,24 +681,24 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     const harness = installRuntime();
     const first = await mountApp();
     await deliverCues();
-    await waitFor(() => expect(rowsOf(first.app)).toHaveLength(2));
-    await waitFor(() => {
-      expect(overlayLine(first.app, 'zh')?.textContent).toBe('你好。');
-      expect(rowsOf(first.app)[1]?.textContent).toContain('我放弃。');
+    await waitFor(() => expect(currentEnglish(first.app)).toBe('Hello there.'));
+    await waitFor(() => expect(overlayLine(first.app, 'zh')?.textContent).toBe('你好。'));
+    await waitFor(async () => {
+      expect((await translationProgress(first.app)).label).toContain('翻译 2/2');
     });
     expect(harness.translateCalls).toHaveLength(1);
     expect(harness.commitCalls).toHaveLength(1);
 
     act(() => unmountContentApp());
     mounted = null;
-    expect(sidebarHost()).toBeNull();
+    expect(document.querySelector('earworm-sidebar-host')).toBeNull();
 
     const second = await mountApp();
     await deliverCues();
-    await waitFor(() => expect(rowsOf(second.app)).toHaveLength(2));
-    await waitFor(() => {
-      expect(overlayLine(second.app, 'zh')?.textContent).toBe('你好。');
-      expect(rowsOf(second.app)[1]?.textContent).toContain('我放弃。');
+    await waitFor(() => expect(currentEnglish(second.app)).toBe('Hello there.'));
+    await waitFor(() => expect(overlayLine(second.app, 'zh')?.textContent).toBe('你好。'));
+    await waitFor(async () => {
+      expect((await translationProgress(second.app)).label).toContain('翻译 2/2');
     });
 
     // Same video + same cue hash: a get-cached hit, no second LLM batch.
@@ -745,10 +710,10 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     const harness = installRuntime();
     const { app } = await mountApp();
     await deliverCues();
-    await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
+    await waitFor(() => expect(currentEnglish(app)).toBe('Hello there.'));
 
     await navigateTo('vid2');
-    await waitFor(() => expect(rowsOf(app)).toHaveLength(0));
+    await waitFor(() => expect(overlayLine(app, 'en')).toBeNull());
 
     await deliverCues(
       [
@@ -757,8 +722,7 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       ],
       'vid2',
     );
-    await waitFor(() => expect(rowsOf(app)).toHaveLength(1));
-    expect(rowsOf(app)[0]?.textContent).toContain('Brand new video.');
+    await waitFor(() => expect(currentEnglish(app)).toBe('Brand new video.'));
     expect(app.ui.container.textContent).not.toContain('Hello there.');
     await waitFor(() =>
       expect(overlayLine(app, 'en')?.textContent).toBe('Brand new video.'),

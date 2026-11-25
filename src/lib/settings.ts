@@ -71,7 +71,6 @@ export function normalizeSettings(raw: unknown): Settings {
     },
     ui: {
       enabled: asBoolean(ui.enabled, DEFAULT_SETTINGS.ui.enabled),
-      sidebar: asBoolean(ui.sidebar, DEFAULT_SETTINGS.ui.sidebar),
     },
   };
 }

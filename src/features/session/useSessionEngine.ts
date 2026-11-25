@@ -542,12 +542,6 @@ export function useSessionEngine(options: SessionEngineOptions): SessionApi {
     setSettingsRef.current({ playback: { continuous: value } });
   }, []);
 
-  const toggleSidebar = useCallback((): void => {
-    // T9 reads/writes the same setting directly, so this must flip the live
-    // settings value instead of keeping a second local boolean.
-    setSettingsRef.current({ ui: { sidebar: !settingsRef.current.ui.sidebar } });
-  }, []);
-
   /* ------------------------------------------------------------------------ */
   /* lifecycle effects                                                         */
   /* ------------------------------------------------------------------------ */
@@ -640,6 +634,5 @@ export function useSessionEngine(options: SessionEngineOptions): SessionApi {
     retrySentence,
     retryAll,
     setContinuous,
-    toggleSidebar,
   };
 }

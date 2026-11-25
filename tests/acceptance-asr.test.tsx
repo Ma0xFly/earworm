@@ -2,7 +2,7 @@
  * Acceptance test for ticket #30: YouTube auto-generated English captions
  * (kind=asr) are the fallback subtitle source when no manual track exists.
  *
- * Mounts the REAL `ContentApp` (session engine, overlay, sidebar, shortcuts)
+ * Mounts the REAL `ContentApp` (session engine, overlay, shortcuts)
  * and drives it through the real `window.postMessage` bridge, exactly like
  * `tests/acceptance.test.tsx`. Only the expensive/network boundaries are
  * mocked: `chrome.runtime.sendMessage` (translation channel), the shipped
@@ -10,7 +10,7 @@
  *
  * The ASR path is exercised end to end: cues arrive with `kind: 'asr'`, the
  * sentence merger applies the ASR pause rule (no punctuation in the cues), the
- * merged sentences are translated, and a/s/d navigate the resulting rows.
+ * merged sentences are translated, and a/s/d navigate the bilingual overlay.
  */
 import { act } from 'react';
 import { waitFor } from '@testing-library/react';
@@ -158,12 +158,12 @@ async function deliverAsrCues(cues: Cue[] = ASR_CUES, videoId = 'vid1'): Promise
   });
 }
 
-function rowsOf(app: MountedContentApp): HTMLElement[] {
-  return Array.from(app.ui.container.querySelectorAll<HTMLElement>('[data-sentence-id]'));
-}
-
 function overlayLine(app: MountedContentApp, lang: 'en' | 'zh'): HTMLElement | null {
   return app.ui.container.querySelector<HTMLElement>(`[data-ew-line="${lang}"]`);
+}
+
+function currentEnglish(app: MountedContentApp): string {
+  return overlayLine(app, 'en')?.textContent ?? '';
 }
 
 async function pressKey(key: string): Promise<void> {
@@ -180,7 +180,7 @@ beforeEach(() => {
 
   seedStorage(SETTINGS_STORAGE_KEY, {
     ...DEFAULT_SETTINGS,
-    ui: { sidebar: true },
+    ui: { enabled: true },
   });
 
   resetCollocationTable();
@@ -205,25 +205,17 @@ afterEach(() => {
 /* -------------------------------------------------------------------------- */
 
 describe('acceptance: ASR-only video (ticket #30)', () => {
-  it('splits ASR cues on pauses, shows bilingual rows and navigates a/s/d', async () => {
+  it('splits ASR cues on pauses, shows a bilingual overlay and navigates a/s/d', async () => {
     const harness = installRuntime();
     const { app, video } = await mountApp();
     video.advance(1); // current sentence = "Hello there"
 
     await deliverAsrCues();
-    await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
+    await waitFor(() => expect(currentEnglish(app)).toBe('Hello there'));
 
     // ASR pause rule: the 1s gap split cue 0; the 0.5s gap kept cues 1+2.
-    expect(rowsOf(app)[0]?.textContent).toContain('Hello there');
-    expect(rowsOf(app)[1]?.textContent).toContain('how are you today I am fine');
-
-    // Bilingual rows + overlay after the mocked LLM batch.
-    await waitFor(() => {
-      expect(rowsOf(app)[0]?.textContent).toContain('你好。');
-      expect(rowsOf(app)[1]?.textContent).toContain('你好吗？我很好。');
-    });
-    expect(overlayLine(app, 'en')?.textContent).toBe('Hello there');
-    expect(overlayLine(app, 'zh')?.textContent).toBe('你好。');
+    // Only the current 字幕句 is painted now, so navigation exposes the split.
+    await waitFor(() => expect(overlayLine(app, 'zh')?.textContent).toBe('你好。'));
 
     // The ASR-merged sentences (not the raw cues) are what gets translated.
     expect(harness.translateCalls).toHaveLength(1);
@@ -236,9 +228,12 @@ describe('acceptance: ASR-only video (ticket #30)', () => {
 
     // d = next sentence: seek to 3s and pause at the ASR sentence end (7s).
     await pressKey('d');
-    await waitFor(() => expect(rowsOf(app)[1]).toHaveAttribute('aria-current', 'true'));
+    await waitFor(() =>
+      expect(currentEnglish(app)).toBe('how are you today I am fine'),
+    );
     expect(video.currentTime).toBeCloseTo(3, 5);
     expect(playRange).toHaveBeenLastCalledWith(3, 7, { pauseAtEnd: true });
+    await waitFor(() => expect(overlayLine(app, 'zh')?.textContent).toBe('你好吗？我很好。'));
 
     // s = repeat the current (second) sentence.
     await pressKey('s');
@@ -247,7 +242,7 @@ describe('acceptance: ASR-only video (ticket #30)', () => {
 
     // a = previous sentence, back to the first ASR sentence.
     await pressKey('a');
-    await waitFor(() => expect(rowsOf(app)[0]).toHaveAttribute('aria-current', 'true'));
+    await waitFor(() => expect(currentEnglish(app)).toBe('Hello there'));
     expect(video.currentTime).toBeCloseTo(0, 5);
     expect(playRange).toHaveBeenLastCalledWith(0, 2, { pauseAtEnd: true });
 

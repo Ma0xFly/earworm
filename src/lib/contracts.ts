@@ -66,8 +66,6 @@ export type Settings = {
   ui: {
     /** Global master switch: false restores native captions and yields shortcuts. */
     enabled: boolean;
-    /** default true. */
-    sidebar: boolean;
   };
 };
 
@@ -81,7 +79,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   blur: { en: false, zh: false },
   playback: { continuous: false },
-  ui: { enabled: true, sidebar: true },
+  ui: { enabled: true },
 };
 
 export type LlmCollocation = { text: string; note?: string };

@@ -21,7 +21,7 @@ describe('settings', () => {
       llm: { baseUrl: 42, apiKey: 'secret', model: 'm' },
       blur: { en: 'yes', zh: true },
       playback: { continuous: 0 },
-      ui: { sidebar: null },
+      ui: { enabled: false, sidebar: null },
       extra: 'dropped',
     });
 
@@ -31,7 +31,8 @@ describe('settings', () => {
     expect(normalized.llm.model).toBe('m');
     expect(normalized.blur).toEqual({ en: false, zh: true });
     expect(normalized.playback.continuous).toBe(false);
-    expect(normalized.ui.sidebar).toBe(true);
+    expect(normalized.ui).toEqual({ enabled: false });
+    expect('sidebar' in normalized.ui).toBe(false);
     expect('extra' in normalized).toBe(false);
   });
 
@@ -40,11 +41,10 @@ describe('settings', () => {
     expect(normalizeSettings({}).ui.enabled).toBe(true);
     expect(normalizeSettings({ ui: { enabled: false, sidebar: true } }).ui).toEqual({
       enabled: false,
-      sidebar: true,
     });
 
     const next = applySettingsPatch(DEFAULT_SETTINGS, { ui: { enabled: false } });
-    expect(next.ui).toEqual({ enabled: false, sidebar: true });
+    expect(next.ui).toEqual({ enabled: false });
 
     const saved = await saveSettings({ ui: { enabled: false } });
     expect(saved.ui.enabled).toBe(false);
@@ -61,7 +61,7 @@ describe('settings', () => {
     expect(next.llm).toEqual(base.llm);
     expect(next.blur).toEqual({ en: true, zh: false });
     expect(next.playback.continuous).toBe(true);
-    expect(next.ui.sidebar).toBe(true);
+    expect(next.ui).toEqual({ enabled: true });
   });
 
   it('persists a merged settings object under the shared storage key', async () => {

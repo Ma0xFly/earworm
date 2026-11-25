@@ -62,9 +62,6 @@ const ADAPTED_FILES = [
   'src/features/playback/attach.ts',
   'src/features/playback/controller.ts',
   'src/features/playback/keyboard.ts',
-  'src/features/sidebar/Sidebar.tsx',
-  'src/features/sidebar/SentenceRow.tsx',
-  'src/features/sidebar/useAutoScroll.ts',
 ];
 
 /** Files reviewed and deliberately left without a third-party header. */

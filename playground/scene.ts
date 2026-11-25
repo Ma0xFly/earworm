@@ -23,7 +23,7 @@ export type SceneDefinition = {
 export const NORMAL_SCENE: SceneDefinition = {
   id: 'normal',
   label: '正常',
-  note: '完整双语流程；第 7 句首次翻译失败，可在侧栏点「重试」恢复。',
+  note: '完整双语流程；第 7 句首次翻译失败，可在快捷菜单点「全部重试」恢复。',
   videoId: 'ew-playground-normal',
   title: 'Earworm 离线 Playground：用字幕学英语',
   channel: 'Earworm Dev',

@@ -78,7 +78,7 @@ describe('computePopupPosition', () => {
     expect(position.maxWidth).toBe(584); // 692 - 108
   });
 
-  it('does not clamp a sidebar word (outside the player) to the player rect', () => {
+  it('does not clamp a word outside the player to the player rect', () => {
     const position = computePopupPosition(
       input({
         anchor: { left: 800, top: 400, width: 80, height: 20 },

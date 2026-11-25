@@ -49,7 +49,7 @@ function nodeElement(node: unknown): Element | null {
 /**
  * True for the editable controls that must keep their native keys:
  * input/textarea/select, contenteditable (including descendants), and
- * `role="textbox"` (Radix/sidebar search fields).
+ * `role="textbox"` (Radix fields).
  */
 export function isEditableElement(element: Element | null): boolean {
   if (!element) return false;
@@ -85,7 +85,7 @@ function isEditableSubtree(element: Element | null): boolean {
 /**
  * Focus guard based on `composedPath()` as well as `event.target`: events from
  * inside the shadow root are retargeted to the host, so target alone misses a
- * focused input in the sidebar. The deep active element is checked too, for
+ * focused input in a portal. The deep active element is checked too, for
  * synthetic key events dispatched at `window` while a field has focus.
  */
 export function isEditableEventTarget(event: KeyboardEvent): boolean {

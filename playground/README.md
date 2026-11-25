@@ -28,9 +28,9 @@ pnpm playground
 
 | 场景 | `?scene=` | 行为 |
 | --- | --- | --- |
-| 正常 | `normal` | 完整双语流程；第 7 句首次翻译**故意失败**，点侧栏「重试」恢复；fixture 中后段还有已翻译句、未译句与失败句 |
-| 无字幕 | `no-captions` | 模拟 `earworm:cues-failed`（`no-captions`）：overlay 显示「无字幕」提示，侧栏为空 |
-| 翻译失败 | `translate-failed` | 第一批 `translate-batch` 返回错误：14 句全失败、只显示英文，可「全部重试」或逐句重试恢复 |
+| 正常 | `normal` | 完整双语流程；第 7 句首次翻译**故意失败**，在快捷菜单点「全部重试」恢复；fixture 中后段还有已翻译句、未译句与失败句 |
+| 无字幕 | `no-captions` | 模拟 `earworm:cues-failed`（`no-captions`）：overlay 显示「无字幕」提示，无字幕行 |
+| 翻译失败 | `translate-failed` | 第一批 `translate-batch` 返回错误：14 句全失败、只显示英文，可在快捷菜单「全部重试」恢复 |
 | 缓存命中 | `cache-hit` | 预先写入与 fixture 匹配的 `CachedTranslation`：`get-cached` 直接命中，0 次翻译请求 |
 
 每个场景使用不同的 mock `videoId`，切换时走真实的 SPA 导航路径（`history` +
@@ -43,7 +43,6 @@ pnpm playground
 - **播放 / 暂停**：播放器控制条或点击画面；进度条可点击/方向键 seek。
 - **`a` / `s` / `d`**：上一句 / 重复当前句 / 下一句。默认句尾暂停，`连续播放`复选框
   写入真实的 `playback.continuous` 设置，再按 `d` 会连续播过句尾。
-- **侧栏**：当前句琥珀色高亮；点击任意句跳转并播放；失败句有「重试」；顶部有全局重试。
 - **模糊**：播放器左上角「模糊」开关，分别控制 `ui.blur.en` / `ui.blur.zh`。
 - **点词词典**：点击英文字幕里的单词，弹出真实 ECDICT 条目（音标 / 词性 / 考试标签 /
   中文释义），命中搭配时先显示搭配卡片（如 `in the dictionary`）。Esc、滚动或页面点击关闭。
@@ -93,7 +92,7 @@ __earwormPlayground.switchScene('cache-hit');
 
 挂载路径与扩展一致：`mountContentApp` → `createShadowUi`（body 下 `<earworm-root>` 的
 open shadow root + Tailwind style）→ 真实 `AppProviders` → 真实 `ContentApp`。因此字幕定位、
-侧栏停靠、模糊、词典 portal 都在真实的 shadow DOM 中运行。
+控制栏快捷开关、模糊、词典 portal 都在真实的 shadow DOM 中运行。
 
 两条 mock 边界：
 

@@ -899,25 +899,16 @@ describe('session track pipeline', () => {
     playRange.mockRestore();
   });
 
-  it('toggleSidebar flips the shared ui.sidebar setting from the live value', async () => {
+  it('exposes the shared navigation and retry controls without a sidebar toggle', async () => {
     renderSession();
-    await waitFor(() => {
-      expect((readStorage(SETTINGS_STORAGE_KEY) as Settings).ui.sidebar).toBe(true);
-    });
+    await waitFor(() => expect(api).not.toBeNull());
 
-    await act(async () => {
-      api?.toggleSidebar();
-    });
-    await waitFor(() => {
-      expect((readStorage(SETTINGS_STORAGE_KEY) as Settings).ui.sidebar).toBe(false);
-    });
-
-    await act(async () => {
-      api?.toggleSidebar();
-    });
-    await waitFor(() => {
-      expect((readStorage(SETTINGS_STORAGE_KEY) as Settings).ui.sidebar).toBe(true);
-    });
+    expect(api).not.toBeNull();
+    expect('toggleSidebar' in (api as SessionApi)).toBe(false);
+    for (const control of ['seekToSentence', 'retrySentence', 'retryAll', 'setContinuous'] as const) {
+      expect(typeof api?.[control]).toBe('function');
+    }
+    expect((readStorage(SETTINGS_STORAGE_KEY) as Settings).ui).toEqual({ enabled: true });
   });
 
   it('applies a cache hit with zero translation requests', async () => {

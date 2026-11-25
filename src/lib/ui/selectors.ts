@@ -6,8 +6,8 @@
  * `findCaptionElements`) instead of repeating a fragile selector chain. Lookup
  * helpers preserve each consumer's historical preference order.
  *
- * Spec §8: selectors for the player, caption nodes, recommended column and
- * player controls live in this module only.
+ * Spec §8: selectors for the player, caption nodes and player controls live in
+ * this module only.
  */
 
 /** Element ids YouTube uses for the two player shells (opening the page DOM). */
@@ -31,10 +31,6 @@ export const PAGE_SELECTORS = {
   captionWindow: '.caption-window',
   /** One painted caption line, used by the screen-text fallback. */
   captionSegment: '.ytp-caption-segment',
-  /** Recommended-videos column on the watch page (docked sidebar area). */
-  secondary: '#secondary',
-  /** Inner column, used when `#secondary` is absent in a layout experiment. */
-  secondaryInner: '#secondary-inner',
   /** Bottom player controls; the overlay lifts above this bar. */
   controlBar: '.ytp-chrome-bottom',
   /** Right-hand button group; the quick toggle is inserted here. */
@@ -69,7 +65,7 @@ export function firstMatch(
   return null;
 }
 
-/** The player the overlay/sidebar geometry should follow on this page. */
+/** The player the overlay geometry should follow on this page. */
 export function findPlayerElement(doc: Document = document): Element | null {
   return firstMatch(doc, PLAYER_LOOKUP);
 }
@@ -82,15 +78,4 @@ export function findSubtitlesButton(doc: Document = document): Element | null {
 /** Every caption layer node currently in the page. */
 export function findCaptionElements(doc: Document = document): Element[] {
   return Array.from(doc.querySelectorAll(CAPTION_SELECTOR));
-}
-
-/**
- * Slot the docked sidebar is prepended to: the inner recommended-videos column
- * first, the outer column as a fallback for layout experiments.
- */
-export function findSecondarySlot(doc: Document = document): Element | null {
-  return (
-    doc.querySelector(PAGE_SELECTORS.secondaryInner) ??
-    doc.querySelector(PAGE_SELECTORS.secondary)
-  );
 }

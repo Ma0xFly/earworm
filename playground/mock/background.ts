@@ -9,10 +9,10 @@
  *
  * Two demo behaviours are deliberate:
  * - `translate-failed` scene: the first translation batch fails, later ones
- *   succeed, so the sidebar's "全部重试" control has something to recover.
+ *   succeed, so the quick menu's "全部重试" control has something to recover.
  * - `normal` scene: one fixture sentence (`FLAKY_SENTENCE_TEXT`) comes back
- *   without Chinese on its first attempt, demonstrating the per-sentence
- *   retry path. Retrying it succeeds.
+ *   without Chinese on its first attempt, demonstrating the retry path.
+ *   Retrying it succeeds.
  */
 
 import type { CachedTranslation, LlmSentenceResult } from '../../src/lib/contracts';

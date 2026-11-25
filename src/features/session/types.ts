@@ -26,5 +26,4 @@ export type SessionApi = {
   retrySentence: (id: number) => void;
   retryAll: () => void;
   setContinuous: (v: boolean) => void;
-  toggleSidebar: () => void;
 };
