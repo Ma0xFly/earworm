@@ -1,6 +1,7 @@
 import type {
   CachedTranslation,
   Cue,
+  CueTrackKind,
   LlmSentenceResult,
   LlmSettings,
   VideoMeta,
@@ -35,7 +36,7 @@ export type InjectMessageType = (typeof INJECT_MESSAGE)[keyof typeof INJECT_MESS
 export type CuesReadyPayload = {
   videoId: string;
   lang: string;
-  kind: 'manual';
+  kind: CueTrackKind;
   cues: Cue[];
 };
 
@@ -103,7 +104,7 @@ export function isCuesReadyPayload(value: unknown): value is CuesReadyPayload {
     typeof value.videoId === 'string' &&
     value.videoId.length > 0 &&
     typeof value.lang === 'string' &&
-    value.kind === 'manual' &&
+    (value.kind === 'manual' || value.kind === 'asr') &&
     Array.isArray(value.cues) &&
     value.cues.every(isCue)
   );
@@ -111,7 +112,6 @@ export function isCuesReadyPayload(value: unknown): value is CuesReadyPayload {
 
 const FAILURE_REASONS: readonly TranscriptFailureReason[] = [
   'no-captions',
-  'asr-only',
   'nudge-failed',
   'timeout',
   'http',

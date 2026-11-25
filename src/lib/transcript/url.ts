@@ -105,7 +105,8 @@ export function stripTlang(url: string, pageHref?: string): string {
  *
  * ADR-0002: translation tracks are out of scope for v1, so no caller may ask
  * YouTube to machine-translate the track; every fetched payload is the source
- * (manual English) track and the Chinese translation comes only from our LLM.
+ * English track (manual, or ASR as the fallback) and the Chinese translation
+ * comes only from our LLM.
  */
 export function buildUrl(baseUrl: string, pageHref?: string): string {
   const u = new URL(baseUrl, pageBase(pageHref));
@@ -158,7 +159,8 @@ export function vidOfUrl(url: string, pageHref?: string): string {
  *
  * `languageCode` alone is ambiguous when YouTube lists both a human track and
  * an auto-generated one for the same language; include the track's own `kind`
- * and `vssId` when present so the player selects the exact manual track.
+ * and `vssId` when present so the player selects the exact track (manual or
+ * ASR).
  */
 export type CaptionTrackDescriptor = {
   languageCode: string;
@@ -183,37 +185,47 @@ export function isManualEnglishTrack(track: CaptionTrack): boolean {
 /** What the player's caption track list can offer Earworm v1. */
 export type EnglishTrackSelection =
   | { kind: 'manual-en'; track: CaptionTrack }
-  | { kind: 'asr-only' }
+  | { kind: 'asr-en'; track: CaptionTrack }
   | { kind: 'no-captions' };
 
 /**
- * Select the track Earworm v1 may use: manual English only
- * (`languageCode` base `en`, `kind !== 'asr'`). If English exists only as ASR,
- * report `asr-only`; if there is no English track at all, `no-captions`.
+ * Select the track Earworm v1 may use: manual English preferred, YouTube's
+ * auto-generated English (ASR) track as the fallback. `languageCode` base must
+ * be `en`; a non-English ASR track is never a substitute. Only a list with no
+ * English track at all is `no-captions`.
  */
 export function selectEnglishTrack(
   tracks: readonly CaptionTrack[] | null | undefined,
 ): EnglishTrackSelection {
   if (!Array.isArray(tracks) || tracks.length === 0) return { kind: 'no-captions' };
-  let asrEnglish = false;
+  let asrEnglish: CaptionTrack | null = null;
   for (const track of tracks) {
     if (!track || typeof track !== 'object') continue;
     if (baseLang(track.languageCode) !== 'en') continue;
     if (track.kind === 'asr') {
-      asrEnglish = true;
+      asrEnglish ??= track;
       continue;
     }
     return { kind: 'manual-en', track };
   }
-  return asrEnglish ? { kind: 'asr-only' } : { kind: 'no-captions' };
+  return asrEnglish ? { kind: 'asr-en', track: asrEnglish } : { kind: 'no-captions' };
 }
 
 /** Classification of a sniffed timedtext URL. */
-export type CapturedTrackClass = 'manual-en' | 'asr' | 'other';
+export type CapturedTrackClass = 'manual-en' | 'asr-en' | 'asr-other' | 'other';
 
 export function classifyCapturedTrack(url: string, pageHref?: string): CapturedTrackClass {
-  if (trackKindOf(url, pageHref) === 'asr') return 'asr';
-  return baseLang(trackLangOf(url, pageHref)) === 'en' ? 'manual-en' : 'other';
+  const lang = baseLang(trackLangOf(url, pageHref));
+  if (trackKindOf(url, pageHref) === 'asr') {
+    // An ASR capture in another language is still not an English track.
+    return lang === 'en' ? 'asr-en' : 'asr-other';
+  }
+  return lang === 'en' ? 'manual-en' : 'other';
+}
+
+/** Both accepted English sources; anything else must never produce cues. */
+export function isEnglishCapturedTrack(captured: CapturedTrackClass): boolean {
+  return captured === 'manual-en' || captured === 'asr-en';
 }
 
 /**

@@ -62,13 +62,15 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
 
 ## 2. 测试视频候选
 
-> YouTube 的字幕可用性会变化，验收前请先确认视频 CC 菜单有「English (manually
-> created)」；若候选失效，换任意同类型视频并在结果栏记录实际 URL。
+> YouTube 的字幕可用性会变化，验收前请先确认视频 CC 菜单有 English（人工或自动）；
+> 若候选失效，换任意同类型视频并在结果栏记录实际 URL。
 
 | 用途 | 候选 URL | 预期 |
 | --- | --- | --- |
 | 主视频（长演讲，人工英文字幕） | https://www.youtube.com/watch?v=UF8uR6Z6KLc | 有 manual English CC；句子多、适合导航与逐句列表 |
 | 第二视频（TED 演讲，术语/专有名词） | https://www.youtube.com/watch?v=Ks-_Mh1QhMc | 有 manual English CC；用于译文质量抽查 |
+| 人工 + ASR 并存（TED） | https://www.youtube.com/watch?v=iG9CE55wbtY | 同时有 manual English 与自动英文字幕；扩展仍选人工轨（§7.10） |
+| ASR-only 视频（自动英文字幕兜底） | https://www.youtube.com/watch?v=ZedAs9P7yE8 | 仅 auto-generated English (ASR) 轨；应出句列表与双语字幕，按停顿/词数成句（§7.10） |
 | Shorts（可选，v1 支持） | 在 YouTube 搜索 `TED shorts`，选一条带 CC 徽标的 Shorts | Shorts 播放器内 overlay 使用 18% 底部锚点，不遮挡右侧操作栏 |
 | 无字幕视频 | https://www.youtube.com/watch?v=jfKfPfyJRdk | 若该直播已提供自动字幕，请改选 CC 菜单无英文的纯音乐/环境音视频；预期显示「无字幕」且播放正常 |
 
@@ -212,19 +214,24 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
 
 ### §7.7.1 屏上字幕兜底（best-effort，spec §5）
 
-自动证据：`synthesizes cues from painted screen text when nudging cannot be sniffed`
-—— nudge 超时后，注入脚本在 4s 窗口内采样 `.ytp-caption-segment` 文本，
-以 `video.currentTime` 合成 `kind: 'manual'` 的 `cues-ready`；有真实 timedtext
-捕获时立即中止采样（`lets a real timedtext capture win over the screen-text fallback`）。
+自动证据：
 
-兜底限制（已知，不在 v1 修复范围）：
+- `synthesizes cues from painted screen text when nudging cannot be sniffed`
+  —— nudge 超时后，注入脚本在 4s 窗口内采样 `.ytp-caption-segment` 文本，
+  以 `video.currentTime` 合成 `kind: 'manual'` 的 `cues-ready`；有真实 timedtext
+  捕获时立即中止采样（`lets a real timedtext capture win over the screen-text fallback`）。
+- `marks synthesized screen-text cues as ASR when the nudge chose an ASR track`
+  —— nudge 选中的是 ASR 轨时，同样的屏上文本合成 `kind: 'asr'`，下游按 ASR
+  停顿/词数规则成句。
+
+兜底限制（已知）：
 
 - 只读取采样时**正在屏幕上绘制**的字幕行；暂停、原生字幕未开启或纯空白窗口
   读不到文本，仍回落到原有分类失败（`nudge-failed` / `timeout`）。
 - 合成 cue 的 `start` 是采样墙钟时间，不是 YouTube 的真实 cue 起点；`end` 取
   下一行出现时间（末行固定 +2s），因此时间轴精度低于 `timedtext` 路径。
-- 兜底不改变「v1 只接受人工英文字幕」：ASR-only / 无英文轨仍直接分类失败，
-  不抓屏上文本。
+- 合成 cue 的 `kind` 跟随失败路径已确定的轨：nudge 选中 ASR 轨 → `asr`；
+  人工轨或轨道未知 → `manual`。ASR-only 不再直接分类失败（v1 接受 ASR 兜底）。
 
 手工步骤：对一个 CC 菜单有 manual English、但注入脚本抓不到 timedtext 的视频，
 确认 15s 内（8s 嗅探 + 3s nudge + ≤4s 采样）出现双语字幕；若窗口内无屏上文本，
@@ -270,6 +277,38 @@ overlay 显示「字幕获取失败」并可点「重试」。
 
 实际结果：____________________
 
+### §7.10 ASR-only 视频（自动英文字幕兜底，spec §7 第 10 条）
+
+自动证据：
+
+- `tests/acceptance-asr.test.tsx` →
+  `splits ASR cues on pauses, shows bilingual rows and navigates a/s/d`
+  —— 以真实 `postCuesReady` envelope（`kind: 'asr'`）注入无标点 cues：0.8s 停顿处
+  断句、0.5s 停顿处合句，侧栏两行双语、overlay 双语，`a`/`s`/`d` 在 ASR 句列表上
+  跳转/复读并在句尾暂停。
+- `src/lib/cues/merge.test.ts`（ASR describe）—— 0.8s 停顿阈值、20 词上限、标点优先、
+  自定义 `pauseSeconds`/`maxWords`，以及 manual 轨默认行为不变。
+- `tests/inject-runtime.test.ts` —— 嗅探 `kind=asr&lang=en` 捕获并以 `kind: 'asr'`
+  发送；非英文 ASR 捕获仍被忽略；nudge 用 `{languageCode, kind: 'asr', vssId}`
+  精确选 ASR 轨；屏上文本兜底 cue 带 `kind: 'asr'`。
+- `tests/transcript-url.test.ts` —— ASR-only 列表选 ASR 轨；manual + ASR 并存仍选
+  人工轨；非英文 ASR 不当作英文轨。
+
+手工步骤：
+
+1. 打开 ASR-only 候选 https://www.youtube.com/watch?v=ZedAs9P7yE8（Dave2D）。
+   CC 菜单应只有自动生成的 English（auto-generated），无 manual 轨。
+2. 等待 ≤15s：侧栏出现逐句列表 + 双语字幕；句子按停顿（≥0.8s）或超 20 词断开，
+   不是每条原始 cue 一行；overlay 英上中下。
+3. 按 `a` / `s` / `d`：上一句 / 重复当前句 / 下一句均按 ASR 合并后的句子跳转，
+   默认句尾暂停；打开连续播放后不暂停。
+4. 打开人工 + ASR 并存候选 https://www.youtube.com/watch?v=iG9CE55wbtY（TED）：
+   CC 菜单同时有人工与自动英文字幕；扩展仍选人工轨（Network 面板中 timedtext
+   请求的 `kind` 为空/manual，而非 `kind=asr`；句子边界应符合标点规则）。
+5. 打开无英文轨视频：仍显示「无字幕」，见 §7.7。
+
+实际结果：____________________
+
 ## 4. 边界与回归抽查（建议）
 
 | 场景 | 预期 | 实际结果 |
@@ -302,6 +341,9 @@ overlay 显示「字幕获取失败」并可点「重试」。
 - 原生字幕 `aria-hidden`：测试只断言 DOM 属性与清理恢复，未用真实屏幕阅读器验证。
 - 屏上字幕兜底只在合成 DOM/定时器上测试，真实 YouTube 的 caption DOM 改版或
   虚拟化渲染未覆盖；限制见 §7.7.1。
+- 真实 YouTube ASR 轨未在自动化中验收：`tests/acceptance-asr.test.tsx` 从真实的
+  `cues-ready(kind:'asr')` bridge 消息开始，覆盖 ASR 成句/双语/a/s/d/契约；真实 ASR
+  timedtext 嗅探、nudge 选中 ASR 轨与屏上文本兜底需按 §7.10 手工确认。
 - Shorts 几何为合成矩形断言（`#shorts-player` + 18% 锚点），未在真实 Shorts DOM 上
   做截图比对；若 YouTube 改版，需手工确认。
 - 候选视频的字幕可用性可能随 YouTube 变化；以实际 CC 菜单为准。
@@ -321,5 +363,6 @@ overlay 显示「字幕获取失败」并可点「重试」。
 | §7.7 无字幕 | PASS | ______ | |
 | §7.8 二次打开零请求 | PASS | ______ | 需 magpie 日志确认 |
 | §7.9 归属 | PASS | ______ | |
+| §7.10 ASR-only 兜底 | PASS | ______ | 真实 ASR 轨需手工（Dave2D）；TED 应仍选 manual |
 
 最终结论：____________________　验收人：__________　日期：__________

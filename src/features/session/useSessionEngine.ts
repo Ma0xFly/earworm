@@ -349,11 +349,12 @@ export function useSessionEngine(options: SessionEngineOptions): SessionApi {
       if (track.videoId !== videoId) return;
       if (activeRef.current?.videoId === videoId) return;
 
-      const merged = mergeCuesToSentences(track.cues);
+      const merged = mergeCuesToSentences(track.cues, { asr: track.kind === 'asr' });
       const meta = readVideoMeta(track.videoId);
 
-      // A manual-English track always carries cues; defensively treat an
-      // empty payload like "no captions" rather than a ready empty session.
+      // An accepted English track (manual or ASR) always carries cues;
+      // defensively treat an empty payload like "no captions" rather than a
+      // ready empty session.
       if (merged.length === 0) {
         activeRef.current = null;
         const status: SessionStatus = 'no-captions';
@@ -414,7 +415,9 @@ export function useSessionEngine(options: SessionEngineOptions): SessionApi {
       }
 
       const meta = readVideoMeta(videoId);
-      const failed = reason !== 'no-captions' && reason !== 'asr-only';
+      // Only a video with no English track at all counts as "no captions";
+      // every acquisition hiccup is an error the user can retry.
+      const failed = reason !== 'no-captions';
       const status: SessionStatus = failed ? 'error' : 'no-captions';
       commitState(() => ({
         ...createInitialState(videoId),

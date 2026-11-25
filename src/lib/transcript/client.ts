@@ -17,7 +17,6 @@ import { videoIdFromLocation } from './url';
 
 export type TranscriptFailureReason =
   | 'no-captions'
-  | 'asr-only'
   | 'nudge-failed'
   | 'timeout'
   | 'http';

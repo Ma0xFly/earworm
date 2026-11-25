@@ -13,7 +13,10 @@
 
 export type Cue = { start: number; end: number; text: string };
 
-export type CueTrack = { videoId: string; lang: string; kind: 'manual'; cues: Cue[] };
+/** Human-authored captions are preferred; YouTube ASR is the fallback. */
+export type CueTrackKind = 'manual' | 'asr';
+
+export type CueTrack = { videoId: string; lang: string; kind: CueTrackKind; cues: Cue[] };
 
 export type Sentence = {
   /** 0-based, ascending within one video. */
