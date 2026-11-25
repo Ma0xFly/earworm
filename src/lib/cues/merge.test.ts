@@ -248,7 +248,7 @@ describe('mergeCuesToSentences (ASR)', () => {
       { start: 6, end: 8, text: 'I am fine' },
     ];
 
-    expect(mergeCuesToSentences(cues, { asr: true })).toEqual([
+    expect(mergeCuesToSentences(cues, { kind: 'asr' })).toEqual([
       { id: 0, start: 0, end: 2, text: 'Hello there', cueStart: 0, cueEnd: 0 },
       { id: 1, start: 3, end: 5, text: 'how are you today', cueStart: 1, cueEnd: 1 },
       { id: 2, start: 6, end: 8, text: 'I am fine', cueStart: 2, cueEnd: 2 },
@@ -261,7 +261,7 @@ describe('mergeCuesToSentences (ASR)', () => {
       { start: 2.5, end: 4, text: 'how are you today' },
     ];
 
-    expect(mergeCuesToSentences(cues, { asr: true })).toEqual([
+    expect(mergeCuesToSentences(cues, { kind: 'asr' })).toEqual([
       {
         id: 0,
         start: 0,
@@ -281,7 +281,7 @@ describe('mergeCuesToSentences (ASR)', () => {
       { start: 5.5, end: 6.5, text: 'I am fine' },
     ];
 
-    expect(mergeCuesToSentences(cues, { asr: true })).toEqual([
+    expect(mergeCuesToSentences(cues, { kind: 'asr' })).toEqual([
       { id: 0, start: 0, end: 2, text: 'Hello there.', cueStart: 0, cueEnd: 0 },
       { id: 1, start: 2.1, end: 4.2, text: 'how are you today.', cueStart: 1, cueEnd: 2 },
       { id: 2, start: 5.5, end: 6.5, text: 'I am fine', cueStart: 3, cueEnd: 3 },
@@ -295,7 +295,7 @@ describe('mergeCuesToSentences (ASR)', () => {
       { start: 2, end: 3, text: 'fifteen sixteen seventeen eighteen nineteen twenty twentyone' },
     ];
 
-    expect(mergeCuesToSentences(cues, { asr: true })).toEqual([
+    expect(mergeCuesToSentences(cues, { kind: 'asr' })).toEqual([
       {
         id: 0,
         start: 0,
@@ -324,14 +324,14 @@ describe('mergeCuesToSentences (ASR)', () => {
     // maxWords is a hard cap: the 4-word cue is cut to two 2-word fragments
     // instead of standing alone, then the 0.4s gap splits the next cue.
     const capped = mergeCuesToSentences(cues, {
-      asr: true,
+      kind: 'asr',
       pauseSeconds: 0.4,
       maxWords: 2,
     });
     expect(capped.map(({ text }) => text)).toEqual(['one two', 'three four', 'five six']);
     expect(capped[2]!.start).toBe(1.5);
     expect(
-      mergeCuesToSentences(cues, { asr: true, pauseSeconds: 0.6, maxWords: 99 }),
+      mergeCuesToSentences(cues, { kind: 'asr', pauseSeconds: 0.6, maxWords: 99 }),
     ).toEqual([
       {
         id: 0,
@@ -348,7 +348,7 @@ describe('mergeCuesToSentences (ASR)', () => {
     const words = Array.from({ length: 25 }, (_, index) => `word${index + 1}`);
     const cues: Cue[] = [{ start: 10, end: 20, text: words.join(' ') }];
 
-    const sentences = mergeCuesToSentences(cues, { asr: true });
+    const sentences = mergeCuesToSentences(cues, { kind: 'asr' });
 
     expect(sentences).toHaveLength(2);
     expect(sentences[0]!.text.split(' ')).toHaveLength(20);
@@ -373,7 +373,7 @@ describe('mergeCuesToSentences (ASR)', () => {
     words[24] = 'last.';
     const cues: Cue[] = [{ start: 0, end: 25, text: words.join(' ') }];
 
-    const sentences = mergeCuesToSentences(cues, { asr: true });
+    const sentences = mergeCuesToSentences(cues, { kind: 'asr' });
 
     expect(sentences).toHaveLength(2);
     expect(sentences[0]!.text.endsWith('.')).toBe(false);

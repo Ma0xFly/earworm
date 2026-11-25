@@ -12,7 +12,7 @@
  * - times are seconds; a sentence spans min(start)…max(end) of its cues.
  */
 
-import type { Cue, Sentence } from '@/lib/contracts';
+import type { Cue, CueTrackKind, Sentence } from '@/lib/contracts';
 
 /** ASR sentence break: silence between adjacent cues, in seconds (spec §5). */
 export const ASR_PAUSE_SECONDS = 0.8;
@@ -21,8 +21,8 @@ export const ASR_MAX_WORDS = 20;
 
 /** Tunable ASR sentence rules; absent fields fall back to the spec defaults. */
 export type MergeOptions = {
-  /** Apply the ASR pause/word-count rules in addition to punctuation. */
-  asr?: boolean;
+  /** Track kind; ASR tracks add the pause/word-count rules (default manual). */
+  kind?: CueTrackKind;
   /** Pause between adjacent cues that ends a sentence (ASR only). */
   pauseSeconds?: number;
   /** Sentence word cap (ASR only). */
@@ -238,7 +238,7 @@ function cueFragments(cue: Cue, cueIndex: number): Fragment[] {
  * next one, and a cue holding several sentences is split in time proportion to
  * each fragment's character count.
  *
- * ASR tracks (`{ asr: true }`) additionally end a sentence at a pause between
+ * ASR tracks (`{ kind: 'asr' }`) additionally end a sentence at a pause between
  * adjacent cues of at least `pauseSeconds` (default
  * {@link ASR_PAUSE_SECONDS}), and cap a sentence at `maxWords` words (default
  * {@link ASR_MAX_WORDS}). The word cap is hard: a fragment longer than the cap
@@ -248,7 +248,7 @@ function cueFragments(cue: Cue, cueIndex: number): Fragment[] {
  * exactly the in-order cue text joined with single spaces.
  */
 export function mergeCuesToSentences(cues: Cue[], options: MergeOptions = {}): Sentence[] {
-  const asr = options.asr === true;
+  const asr = options.kind === 'asr';
   const pauseSeconds = options.pauseSeconds ?? ASR_PAUSE_SECONDS;
   const maxWords = options.maxWords ?? ASR_MAX_WORDS;
   const sentences: Sentence[] = [];
