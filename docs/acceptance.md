@@ -94,6 +94,9 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
 - `src/features/sidebar/sidebar.test.tsx` 的 `sidebar placement`
   —— 宿主插入位置、面板 `56vh`（320–560px）定高、列表 `overflow-y-auto` 独立滚动、
   折叠后宿主移除/推荐视频上移、全屏转抽屉、blur 属性同步到宿主。
+- `src/features/sidebar/selectors.test.ts`
+  —— 布局环境只含 `hasSecondary`/`viewportWidth`/`fullscreen`；给播放器加
+  `ytp-large-width-mode`（剧场）不改变环境，剧场不再参与布局判定。
 
 手工步骤：
 
@@ -109,6 +112,8 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
 8. 点右上「收起字幕侧栏」：面板消失、推荐视频上移；浮出的「字幕」按钮可重新展开。
 9. 进入全屏：侧栏转为右侧抽屉；退出全屏后回到右栏文档流。
 10. 切换视频（SPA）：侧栏应出现在新视频的右栏顶部，不残留旧视频句子。
+11. 剧场模式：右栏可用则插入其中（文档流），不可用则右侧抽屉。该模式不再单独触发
+    任何特殊布局；宽/窄窗口的差异完全来自 YouTube 是否暴露可用的 `#secondary`。
 
 实际结果：____________________
 
@@ -286,11 +291,13 @@ overlay 显示「字幕获取失败」并可点「重试」。
   —— 以真实 `postCuesReady` envelope（`kind: 'asr'`）注入无标点 cues：0.8s 停顿处
   断句、0.5s 停顿处合句，侧栏两行双语、overlay 双语，`a`/`s`/`d` 在 ASR 句列表上
   跳转/复读并在句尾暂停。
-- `src/lib/cues/merge.test.ts`（ASR describe）—— 0.8s 停顿阈值、20 词上限、标点优先、
+- `src/lib/cues/merge.test.ts`（ASR describe）—— 0.8s 停顿阈值、20 词硬上限
+  （超长单个 fragment 按词切块、时间连续、结尾标点只留最后一块）、标点优先、
   自定义 `pauseSeconds`/`maxWords`，以及 manual 轨默认行为不变。
 - `tests/inject-runtime.test.ts` —— 嗅探 `kind=asr&lang=en` 捕获并以 `kind: 'asr'`
   发送；非英文 ASR 捕获仍被忽略；nudge 用 `{languageCode, kind: 'asr', vssId}`
-  精确选 ASR 轨；屏上文本兜底 cue 带 `kind: 'asr'`。
+  精确选 ASR 轨；屏上文本兜底 cue 带 `kind: 'asr'`；人工 + ASR 并存时先到的 ASR
+  捕获被忽略并推人工轨，人工轨已捕获后后续 ASR 捕获不再改写来源、不重复 fetch。
 - `tests/transcript-url.test.ts` —— ASR-only 列表选 ASR 轨；manual + ASR 并存仍选
   人工轨；非英文 ASR 不当作英文轨。
 
@@ -298,14 +305,26 @@ overlay 显示「字幕获取失败」并可点「重试」。
 
 1. 打开 ASR-only 候选 https://www.youtube.com/watch?v=ZedAs9P7yE8（Dave2D）。
    CC 菜单应只有自动生成的 English（auto-generated），无 manual 轨。
-2. 等待 ≤15s：侧栏出现逐句列表 + 双语字幕；句子按停顿（≥0.8s）或超 20 词断开，
-   不是每条原始 cue 一行；overlay 英上中下。
+2. 等待 ≤15s：侧栏出现逐句列表 + 双语字幕；句子按停顿（≥0.8s）或 20 词硬上限
+   断开（单个超长 fragment 会被切块），不是每条原始 cue 一行；overlay 英上中下。
 3. 按 `a` / `s` / `d`：上一句 / 重复当前句 / 下一句均按 ASR 合并后的句子跳转，
    默认句尾暂停；打开连续播放后不暂停。
 4. 打开人工 + ASR 并存候选 https://www.youtube.com/watch?v=iG9CE55wbtY（TED）：
    CC 菜单同时有人工与自动英文字幕；扩展仍选人工轨（Network 面板中 timedtext
    请求的 `kind` 为空/manual，而非 `kind=asr`；句子边界应符合标点规则）。
 5. 打开无英文轨视频：仍显示「无字幕」，见 §7.7。
+
+已知限制：
+
+- 停顿规则依赖清洗后相邻 cue 的真实 gap。YouTube ASR 的 cue 常首尾相接（下一句
+  开始时间就是上一句结束时间），此时 0.8s 停顿很少出现，20 词上限才是主要的兜底
+  断句依据；句子粒度因此可能偏长，但不会超过 20 词。
+- 20 词是硬上限而非仅在 cue 边界断句：单个超长 fragment 会按词切成 ≤20 词的块，
+  时间按字符占比分配，只有最后一块保留原结尾标点，因此一条原始 cue 可能被拆成
+  多行（每块各自成句）。
+- 根因说明（供 issue #30 关闭评论引用）：ASR 的 timedtext 捕获能力在 v1 早期就已
+  存在，只是当时按 manual-only 范围决策被主动丢弃；后续恢复它是范围调整，不是
+  修复「ASR 获取故障」。本次改动只处理人工 + ASR 并存时的优先级。
 
 实际结果：____________________
 
@@ -316,7 +335,7 @@ overlay 显示「字幕获取失败」并可点「重试」。
 | YouTube SPA：首页 → 视频 → 另一个视频 | 旧字幕不残留；新视频重新载入；无重复 overlay；侧栏宿主重插新 `#secondary-inner` 首位 | ______ |
 | 右栏整体重建（推荐视频刷新） | `earworm-sidebar-host` 仍在当前列首位，推荐视频在面板下方，不出现重复面板 | ______ |
 | 关闭再打开侧栏 | 开关状态持久化；宿主移除后推荐视频上移；重开后列表恢复 | ______ |
-| 剧场模式 | 右栏可用时侧栏仍嵌在文档流（不再强制抽屉）；右栏被 YouTube 隐藏时自然转抽屉 | ______ |
+| 剧场模式 | 不再特殊处理：右栏可用则插入其中（文档流），不可用则右侧抽屉 | ______ |
 | 进入 / 退出全屏 | 进入全屏转右侧抽屉并移走嵌套宿主；退出后回到右栏文档流 | ______ |
 | 扩展重新加载（chrome://extensions） | 页面需刷新；刷新后正常挂载，无重复 shadow root | ______ |
 | 视频无中文译文（LLM 失败） | 英文仍显示；失败句可单句重试；其余句不受影响 | ______ |
