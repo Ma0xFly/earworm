@@ -38,6 +38,16 @@ describe('OptionsApp', () => {
     );
   });
 
+  it('shows the finalized logo in the header with an accessible name', async () => {
+    await renderOptions();
+
+    expect(screen.getByRole('img', { name: 'Earworm' })).toHaveAttribute(
+      'src',
+      'chrome-extension://earworm-test/brand/earworm-logo-full.png',
+    );
+    expect(screen.getByRole('heading', { name: 'Earworm 设置' })).toBeInTheDocument();
+  });
+
   it('repopulates every field from chrome.storage.local on load', async () => {
     seedStorage(SETTINGS_STORAGE_KEY, {
       ...DEFAULT_SETTINGS,

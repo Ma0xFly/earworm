@@ -22,6 +22,7 @@ type Manifest = {
   optional_host_permissions?: string[];
   content_scripts?: ContentScript[];
   background?: { service_worker?: string };
+  icons?: Record<string, string>;
   options_ui?: { page?: string; open_in_tab?: boolean };
   web_accessible_resources?: Array<{ resources?: string[]; matches?: string[] }>;
 };
@@ -137,6 +138,35 @@ export function manifestProblems(outputDir: string): string[] {
   }
   if (!fileExists('data/README.md')) {
     problems.push('public/data/README.md was not copied into the build output');
+  }
+
+  // The finalized logo is the only extension icon. WXT's auto-discovery
+  // cannot see public/brand/, so the contract must be asserted explicitly.
+  const expectedIcons: Record<string, string> = {
+    '16': 'brand/earworm-icon-16.png',
+    '32': 'brand/earworm-icon-32.png',
+    '48': 'brand/earworm-icon-48.png',
+    '128': 'brand/earworm-icon-128.png',
+  };
+  for (const [size, relative] of Object.entries(expectedIcons)) {
+    if (manifest.icons?.[size] !== relative) {
+      problems.push(`icons.${size} must be "${relative}", got ${String(manifest.icons?.[size])}`);
+    }
+    if (!fileExists(relative)) {
+      problems.push(`icon file missing from build output: ${relative}`);
+    }
+  }
+  if (Object.values(manifest.icons ?? {}).includes('brand/earworm-icon-source.png')) {
+    problems.push('earworm-icon-source.png is a source asset and must not be a browser icon');
+  }
+
+  const brandWar = (manifest.web_accessible_resources ?? []).find((entry) =>
+    entry.resources?.includes('brand/*'),
+  );
+  if (!brandWar) {
+    problems.push('web_accessible_resources must expose "brand/*"');
+  } else if (!brandWar.matches?.includes('https://www.youtube.com/*')) {
+    problems.push('"brand/*" web_accessible_resource must match YouTube');
   }
 
   // Attribution must ship with the distributed extension package, not only in
