@@ -6,6 +6,7 @@ import { SETTINGS_STORAGE_KEY, SettingsProvider } from '@/lib/settings';
 import { seedStorage } from '../../../tests/mocks/chrome';
 import type { SessionApi, SessionState } from '@/features/session';
 import { Sidebar } from './Sidebar';
+import { SIDEBAR_HOST_TAG } from './host';
 
 /**
  * The sidebar consumes the session and settings context from the shared
@@ -80,7 +81,7 @@ async function renderSidebar(api: SessionApi) {
 
 /** The document-flow host inserted into the recommended-videos column. */
 function sidebarHost(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('earworm-sidebar-host');
+  return document.querySelector<HTMLElement>(SIDEBAR_HOST_TAG);
 }
 
 function shadowQuery<T extends Element>(selector: string): T | null {
@@ -251,6 +252,22 @@ describe('sidebar states', () => {
     expect(sentenceRows()).toHaveLength(0);
   });
 
+  it('shows a Chinese hint instead of the raw acquisition failure code', async () => {
+    await renderSidebar(makeSession({ status: 'error', error: 'nudge-failed' }));
+
+    const notice = panel();
+    expect(notice?.textContent).toContain('字幕获取失败');
+    expect(notice?.textContent).toContain('播放器未能加载所选字幕轨，请重试');
+    expect(notice?.textContent).not.toContain('nudge-failed');
+  });
+
+  it('falls back to a generic retry hint for an unknown failure reason', async () => {
+    await renderSidebar(makeSession({ status: 'error', error: 'boom' }));
+
+    expect(panel()?.textContent).toContain('请稍后重试');
+    expect(panel()?.textContent).not.toContain('boom');
+  });
+
   it('offers a retry that re-acquires captions in the error state', async () => {
     const api = makeSession({ status: 'error', error: 'timeout' });
     await renderSidebar(api);
@@ -419,7 +436,7 @@ describe('sidebar placement', () => {
     expect(screen.getByRole('button', { name: '关闭字幕侧栏' })).toBeInTheDocument();
   });
 
-  it('keeps the panel docked in theater mode when #secondary is available', async () => {
+  it('ignores the theater player class and stays docked when #secondary is available', async () => {
     setViewportWidth(1440);
     addSecondaryWithInner();
     const player = document.createElement('div');

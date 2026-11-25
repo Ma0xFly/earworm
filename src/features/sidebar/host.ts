@@ -24,7 +24,11 @@ import { findSecondarySlot, PAGE_SELECTORS } from '@/lib/ui/selectors';
 
 export const SIDEBAR_HOST_TAG = 'earworm-sidebar-host';
 
-/** Inline host styles; the shadow sheet's `:host` rule is the same contract. */
+/**
+ * Inline host styles. Geometry lives here, not in the shadow sheet: the
+ * compiled sheet's `:host` rule (`src/entrypoints/content/style.css`) only
+ * resets inheritance and sets the theme variables/font.
+ */
 const HOST_STYLE = [
   'display: block',
   'width: 100%',
@@ -39,10 +43,8 @@ const LIFECYCLE_RETRY_DELAYS_MS = [250, 1000, 2500] as const;
 
 export type SidebarHost = {
   host: HTMLElement;
-  shadow: ShadowRoot;
   /** Portal target for the docked panel. */
   container: HTMLElement;
-  styleElement: HTMLStyleElement;
   /** Prepend the host to the current column; false when no column exists. */
   attach: () => boolean;
   /** Take the host out of the page (collapsed, fullscreen, drawer mode). */
@@ -54,15 +56,13 @@ export type CreateSidebarHostOptions = {
   /** Compiled content stylesheet (`style.css?inline`). */
   css: string;
   doc?: Document;
-  hostName?: string;
 };
 
 export function createSidebarHost({
   css,
   doc = document,
-  hostName = SIDEBAR_HOST_TAG,
 }: CreateSidebarHostOptions): SidebarHost {
-  const host = doc.createElement(hostName);
+  const host = doc.createElement(SIDEBAR_HOST_TAG);
   host.setAttribute('data-earworm-sidebar-host', '');
   host.style.cssText = HOST_STYLE;
 
@@ -95,9 +95,7 @@ export function createSidebarHost({
 
   return {
     host,
-    shadow,
     container,
-    styleElement,
     attach,
     detach() {
       host.remove();

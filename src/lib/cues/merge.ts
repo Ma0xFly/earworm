@@ -12,7 +12,7 @@
  * - times are seconds; a sentence spans min(start)…max(end) of its cues.
  */
 
-import type { Cue, Sentence } from '@/lib/contracts';
+import type { Cue, CueTrackKind, Sentence } from '@/lib/contracts';
 
 /** ASR sentence break: silence between adjacent cues, in seconds (spec §5). */
 export const ASR_PAUSE_SECONDS = 0.8;
@@ -21,8 +21,8 @@ export const ASR_MAX_WORDS = 20;
 
 /** Tunable ASR sentence rules; absent fields fall back to the spec defaults. */
 export type MergeOptions = {
-  /** Apply the ASR pause/word-count rules in addition to punctuation. */
-  asr?: boolean;
+  /** Track kind; ASR tracks add the pause/word-count rules (default manual). */
+  kind?: CueTrackKind;
   /** Pause between adjacent cues that ends a sentence (ASR only). */
   pauseSeconds?: number;
   /** Sentence word cap (ASR only). */
@@ -164,6 +164,46 @@ function cuePieces(text: string): Piece[] {
   return pieces.filter((piece) => piece.text && hasContent(piece.text));
 }
 
+/**
+ * Apply the ASR word cap to one fragment. The cap is a hard cap: a fragment
+ * longer than `maxWords` is cut into chunks of at most `maxWords` words, with
+ * their times allocated by character share. Only the last chunk inherits the
+ * fragment's terminal punctuation (`closes`), so a missing period never closes
+ * the whole sentence early.
+ */
+function capFragmentWords(fragment: Fragment, maxWords: number): Fragment[] {
+  const words = fragment.text.split(/\s+/).filter(Boolean);
+  const cap = Number.isFinite(maxWords)
+    ? Math.max(1, Math.floor(maxWords))
+    : ASR_MAX_WORDS;
+  if (words.length <= cap) return [fragment];
+
+  const chunks: string[] = [];
+  for (let index = 0; index < words.length; index += cap) {
+    chunks.push(words.slice(index, index + cap).join(' '));
+  }
+
+  // The normalized fragment text is exactly the chunks joined with single
+  // spaces, so cumulative chunk characters (separators included) cover its
+  // length without a rounding gap at the fragment end.
+  const span = fragment.end - fragment.start;
+  const totalChars = fragment.text.length;
+  let consumed = 0;
+
+  return chunks.map((text, index) => {
+    const start = fragment.start + (span * consumed) / totalChars;
+    consumed += text.length + (index < chunks.length - 1 ? 1 : 0);
+    const end = fragment.start + (span * consumed) / totalChars;
+    return {
+      text,
+      start,
+      end,
+      cueIndex: fragment.cueIndex,
+      closes: fragment.closes && index === chunks.length - 1,
+    };
+  });
+}
+
 /** Turn a cue into fragments, splitting its [start, end] proportionally to characters. */
 function cueFragments(cue: Cue, cueIndex: number): Fragment[] {
   const text = normalizeCueText(cue.text);
@@ -198,15 +238,17 @@ function cueFragments(cue: Cue, cueIndex: number): Fragment[] {
  * next one, and a cue holding several sentences is split in time proportion to
  * each fragment's character count.
  *
- * ASR tracks (`{ asr: true }`) additionally end a sentence at a pause between
+ * ASR tracks (`{ kind: 'asr' }`) additionally end a sentence at a pause between
  * adjacent cues of at least `pauseSeconds` (default
  * {@link ASR_PAUSE_SECONDS}), and cap a sentence at `maxWords` words (default
- * {@link ASR_MAX_WORDS}), breaking on a fragment boundary. Punctuation rules
- * still apply first; every break lands between fragments, so `text` stays
+ * {@link ASR_MAX_WORDS}). The word cap is hard: a fragment longer than the cap
+ * is itself split into word-count chunks (times proportional to characters,
+ * terminal punctuation kept on the last chunk). Punctuation rules still apply
+ * first; every break lands between fragments or word chunks, so `text` stays
  * exactly the in-order cue text joined with single spaces.
  */
 export function mergeCuesToSentences(cues: Cue[], options: MergeOptions = {}): Sentence[] {
-  const asr = options.asr === true;
+  const asr = options.kind === 'asr';
   const pauseSeconds = options.pauseSeconds ?? ASR_PAUSE_SECONDS;
   const maxWords = options.maxWords ?? ASR_MAX_WORDS;
   const sentences: Sentence[] = [];
@@ -236,15 +278,17 @@ export function mergeCuesToSentences(cues: Cue[], options: MergeOptions = {}): S
         // pause by widening the gap to the previous real cue.
         if (previousCue && cue.start - previousCue.end >= pauseSeconds) flush();
       }
-      if (asr && group.length > 0) {
-        // Word cap: never let the accumulated sentence grow past `maxWords`.
-        // A single fragment longer than the cap still stands alone.
-        if (groupWords + wordCount(fragment.text) > maxWords) flush();
+      const pieces = asr ? capFragmentWords(fragment, maxWords) : [fragment];
+      for (const piece of pieces) {
+        if (asr && group.length > 0) {
+          // Word cap: never let the accumulated sentence grow past `maxWords`.
+          if (groupWords + wordCount(piece.text) > maxWords) flush();
+        }
+        group.push(piece);
+        groupWords += wordCount(piece.text);
+        // Punctuation always closes first; the ASR rules only add boundaries.
+        if (piece.closes) flush();
       }
-      group.push(fragment);
-      groupWords += wordCount(fragment.text);
-      // Punctuation always closes first; the ASR rules only add boundaries.
-      if (fragment.closes) flush();
     }
   });
 

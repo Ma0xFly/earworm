@@ -33,11 +33,12 @@ import {
 import { createPortal } from 'react-dom';
 import { PanelRightClose, XIcon } from 'lucide-react';
 import { useSession, type TranslationProgress } from '@/features/session';
+import { blurDataAttributes } from '@/features/blur';
 import { useSettings } from '@/lib/settings';
 import { useShadowCss } from '@/lib/ui/shadow-css';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { SESSION_STATUS_TEXT } from '@/lib/ui/status-text';
+import { failureHint, SESSION_STATUS_TEXT } from '@/lib/ui/status-text';
 import { SentenceRow } from './SentenceRow';
 import { computeSidebarLayout } from './selectors';
 import { useSidebarEnvironment } from './useSidebarEnvironment';
@@ -115,8 +116,9 @@ export function Sidebar() {
   useEffect(() => {
     const node = host?.host;
     if (!node) return;
-    node.setAttribute('data-blur-en', settings.blur.en ? '1' : '0');
-    node.setAttribute('data-blur-zh', settings.blur.zh ? '1' : '0');
+    const attributes = blurDataAttributes(settings.blur);
+    node.setAttribute('data-blur-en', attributes['data-blur-en']);
+    node.setAttribute('data-blur-zh', attributes['data-blur-zh']);
   }, [host, settings.blur.en, settings.blur.zh]);
 
   const toggleSidebar = useCallback((): void => {
@@ -259,7 +261,7 @@ export function Sidebar() {
       {state.status === 'error' ? (
         <StateNotice
           title={SESSION_STATUS_TEXT.error}
-          hint={state.error ?? '请稍后重试'}
+          hint={failureHint(state.error)}
           action={
             <button
               type="button"

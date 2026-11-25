@@ -2,7 +2,7 @@ import { useSettings } from '@/lib/settings';
 import { useSession } from '@/features/session';
 import { Overlay } from '@/features/overlay';
 import { Sidebar } from '@/features/sidebar';
-import { BlurControls } from '@/features/blur';
+import { BlurControls, blurDataAttributes } from '@/features/blur';
 import { DictionaryPopup } from '@/features/dictionary';
 import { PlaybackShortcuts } from '@/features/playback';
 
@@ -15,12 +15,12 @@ import { PlaybackShortcuts } from '@/features/playback';
  */
 export function ContentApp() {
   const { settings } = useSettings();
+  const blurAttributes = blurDataAttributes(settings.blur);
 
   return (
     <div
       data-earworm-root
-      data-blur-en={settings.blur.en ? '1' : '0'}
-      data-blur-zh={settings.blur.zh ? '1' : '0'}
+      {...blurAttributes}
       className="pointer-events-none fixed inset-0 overflow-visible"
     >
       <Overlay />

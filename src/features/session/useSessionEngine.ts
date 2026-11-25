@@ -349,7 +349,7 @@ export function useSessionEngine(options: SessionEngineOptions): SessionApi {
       if (track.videoId !== videoId) return;
       if (activeRef.current?.videoId === videoId) return;
 
-      const merged = mergeCuesToSentences(track.cues, { asr: track.kind === 'asr' });
+      const merged = mergeCuesToSentences(track.cues, { kind: track.kind });
       const meta = readVideoMeta(track.videoId);
 
       // An accepted English track (manual or ASR) always carries cues;

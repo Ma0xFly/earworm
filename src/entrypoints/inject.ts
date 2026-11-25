@@ -735,6 +735,33 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
       // (including non-English ASR) is ignored so we never produce wrong cues.
       if (!isEnglishCapturedTrack(captured)) return;
 
+      if (captured === 'asr-en') {
+        // The player may fetch its ASR track before the human one. Accepting
+        // that capture would lock the session to ASR even when a manual track
+        // exists, but spec §7.10 requires manual to win when both are offered.
+        // Once the human track is captured, later ASR captures are ignored; if
+        // the readable track list still offers a human track, ignore this
+        // capture and nudge the player onto that track instead.
+        if (
+          sourceUrl &&
+          sourceVid === videoIdHere &&
+          classifyCapturedTrack(sourceUrl, pageHref) === 'manual-en'
+        ) {
+          return;
+        }
+        const tracks = captionTracksFor(videoIdHere);
+        if (tracks !== null) {
+          const selection = selectEnglishTrack(tracks);
+          if (selection.kind === 'manual-en') {
+            nudgeCaptions(selection.track);
+            scheduleGrace(videoIdHere, 'nudge-failed', 'manual');
+            return;
+          }
+        }
+        // Unknown track list or no manual English track: ASR remains the
+        // fallback source and this capture is accepted below.
+      }
+
       // When the player's selected track is an auto-translate one, every
       // request it makes carries tlang=; the URL minus tlang is still the
       // source track and its pot holds for the source leg.
