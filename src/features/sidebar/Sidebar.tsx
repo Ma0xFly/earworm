@@ -37,7 +37,7 @@ import { useSettings } from '@/lib/settings';
 import { useShadowCss } from '@/lib/ui/shadow-css';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { SESSION_STATUS_TEXT } from '@/lib/ui/status-text';
+import { failureHint, SESSION_STATUS_TEXT } from '@/lib/ui/status-text';
 import { SentenceRow } from './SentenceRow';
 import { computeSidebarLayout } from './selectors';
 import { useSidebarEnvironment } from './useSidebarEnvironment';
@@ -259,7 +259,7 @@ export function Sidebar() {
       {state.status === 'error' ? (
         <StateNotice
           title={SESSION_STATUS_TEXT.error}
-          hint={state.error ?? '请稍后重试'}
+          hint={failureHint(state.error)}
           action={
             <button
               type="button"

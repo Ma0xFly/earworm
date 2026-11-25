@@ -251,6 +251,22 @@ describe('sidebar states', () => {
     expect(sentenceRows()).toHaveLength(0);
   });
 
+  it('shows a Chinese hint instead of the raw acquisition failure code', async () => {
+    await renderSidebar(makeSession({ status: 'error', error: 'nudge-failed' }));
+
+    const notice = panel();
+    expect(notice?.textContent).toContain('字幕获取失败');
+    expect(notice?.textContent).toContain('播放器未能加载所选字幕轨，请重试');
+    expect(notice?.textContent).not.toContain('nudge-failed');
+  });
+
+  it('falls back to a generic retry hint for an unknown failure reason', async () => {
+    await renderSidebar(makeSession({ status: 'error', error: 'boom' }));
+
+    expect(panel()?.textContent).toContain('请稍后重试');
+    expect(panel()?.textContent).not.toContain('boom');
+  });
+
   it('offers a retry that re-acquires captions in the error state', async () => {
     const api = makeSession({ status: 'error', error: 'timeout' });
     await renderSidebar(api);
