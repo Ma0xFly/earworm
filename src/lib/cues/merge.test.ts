@@ -321,9 +321,15 @@ describe('mergeCuesToSentences (ASR)', () => {
       { start: 1.5, end: 2.5, text: 'five six' },
     ];
 
-    expect(
-      mergeCuesToSentences(cues, { asr: true, pauseSeconds: 0.4, maxWords: 2 }),
-    ).toHaveLength(2);
+    // maxWords is a hard cap: the 4-word cue is cut to two 2-word fragments
+    // instead of standing alone, then the 0.4s gap splits the next cue.
+    const capped = mergeCuesToSentences(cues, {
+      asr: true,
+      pauseSeconds: 0.4,
+      maxWords: 2,
+    });
+    expect(capped.map(({ text }) => text)).toEqual(['one two', 'three four', 'five six']);
+    expect(capped[2]!.start).toBe(1.5);
     expect(
       mergeCuesToSentences(cues, { asr: true, pauseSeconds: 0.6, maxWords: 99 }),
     ).toEqual([
@@ -334,6 +340,60 @@ describe('mergeCuesToSentences (ASR)', () => {
         text: 'one two three four five six',
         cueStart: 0,
         cueEnd: 1,
+      },
+    ]);
+  });
+
+  it('splits a single ASR fragment longer than the hard word cap', () => {
+    const words = Array.from({ length: 25 }, (_, index) => `word${index + 1}`);
+    const cues: Cue[] = [{ start: 10, end: 20, text: words.join(' ') }];
+
+    const sentences = mergeCuesToSentences(cues, { asr: true });
+
+    expect(sentences).toHaveLength(2);
+    expect(sentences[0]!.text.split(' ')).toHaveLength(20);
+    expect(sentences[1]!.text.split(' ')).toHaveLength(5);
+    // No word is lost or reordered by the split.
+    expect(sentences.map(({ text }) => text).join(' ')).toBe(cues[0]!.text);
+    expect(sentences.map(({ cueStart, cueEnd }) => ({ cueStart, cueEnd }))).toEqual([
+      { cueStart: 0, cueEnd: 0 },
+      { cueStart: 0, cueEnd: 0 },
+    ]);
+    // Contiguous, character-proportional time share across the cue.
+    expect(sentences[0]!.start).toBe(10);
+    expect(sentences[0]!.end).toBeCloseTo(sentences[1]!.start, 10);
+    expect(sentences[1]!.end).toBe(20);
+    const firstShare = sentences[0]!.end - sentences[0]!.start;
+    const secondShare = sentences[1]!.end - sentences[1]!.start;
+    expect(firstShare).toBeGreaterThan(secondShare);
+  });
+
+  it('keeps terminal punctuation on the last chunk of a split ASR fragment', () => {
+    const words = Array.from({ length: 25 }, (_, index) => `word${index + 1}`);
+    words[24] = 'last.';
+    const cues: Cue[] = [{ start: 0, end: 25, text: words.join(' ') }];
+
+    const sentences = mergeCuesToSentences(cues, { asr: true });
+
+    expect(sentences).toHaveLength(2);
+    expect(sentences[0]!.text.endsWith('.')).toBe(false);
+    expect(sentences[1]!.text.endsWith('.')).toBe(true);
+    expect(sentences[0]!.text.split(' ')).toHaveLength(20);
+    expect(sentences[1]!.text.split(' ')).toHaveLength(5);
+  });
+
+  it('does not word-cap a long manual cue', () => {
+    const words = Array.from({ length: 25 }, (_, index) => `word${index + 1}`);
+    const cues: Cue[] = [{ start: 0, end: 10, text: words.join(' ') }];
+
+    expect(mergeCuesToSentences(cues)).toEqual([
+      {
+        id: 0,
+        start: 0,
+        end: 10,
+        text: words.join(' '),
+        cueStart: 0,
+        cueEnd: 0,
       },
     ]);
   });
