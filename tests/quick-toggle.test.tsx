@@ -257,4 +257,82 @@ describe('quick menu', () => {
     });
     expect(zh).toHaveAttribute('aria-checked', 'false');
   });
+
+  it('exports bilingual SRT/TXT from cached session state with no new LLM request', async () => {
+    sessionMock.state = readyState({
+      meta: { videoId: 'video-1', title: 'My/Video: Test', channel: 'channel' },
+      sentences: [
+        {
+          id: 0,
+          start: 0,
+          end: 1.5,
+          text: 'Hello world.',
+          cueStart: 0,
+          cueEnd: 0,
+          cols: [],
+          status: 'done',
+          zh: '你好，世界。',
+        },
+        {
+          id: 1,
+          start: 2,
+          end: 3,
+          text: 'Untranslated.',
+          cueStart: 1,
+          cueEnd: 1,
+          cols: [],
+          status: 'pending',
+        },
+      ],
+    });
+
+    const blobs: Blob[] = [];
+    const downloads: string[] = [];
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = ((blob: Blob) => {
+      blobs.push(blob);
+      return 'blob:test';
+    }) as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => {}) as typeof URL.revokeObjectURL;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        downloads.push(this.download);
+      });
+
+    try {
+      const { ui } = await mountApp();
+      await openMenu(ui);
+      const currentMenu = () => ui.portalContainer.querySelector<HTMLElement>('[data-earworm-quick-menu]')!;
+
+      await act(async () => {
+        fireEvent.click(within(currentMenu()).getByRole('button', { name: '字幕导出' }));
+      });
+      expect(within(currentMenu()).getByRole('button', { name: 'SRT' })).toBeInTheDocument();
+      expect(within(currentMenu()).getByRole('button', { name: 'TXT' })).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(within(currentMenu()).getByRole('button', { name: 'SRT' }));
+      });
+      await act(async () => {
+        fireEvent.click(within(currentMenu()).getByRole('button', { name: '字幕导出' }));
+      });
+      await act(async () => {
+        fireEvent.click(within(currentMenu()).getByRole('button', { name: 'TXT' }));
+      });
+
+      expect(downloads).toEqual(['My Video Test.srt', 'My Video Test.txt']);
+      expect(blobs).toHaveLength(2);
+      const srt = await blobs[0]!.text();
+      const txt = await blobs[1]!.text();
+      expect(srt).toContain('00:00:00,000 --> 00:00:01,500\nHello world.\n你好，世界。');
+      expect(srt).toContain('2\n00:00:02,000 --> 00:00:03,000\nUntranslated.\n\n');
+      expect(txt).toBe('Hello world.\n你好，世界。\n\nUntranslated.\n\n');
+      expect(sessionMock.retryAll).not.toHaveBeenCalled();
+    } finally {
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+      click.mockRestore();
+    }
+  });
 });

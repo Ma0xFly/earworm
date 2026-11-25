@@ -13,6 +13,7 @@ import { ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { BlurSwitches } from '@/features/blur';
+import { useSubtitleExport } from '@/features/export';
 import { useSession } from '@/features/session';
 import { useSettings } from '@/lib/settings';
 import { useShadowCss } from '@/lib/ui/shadow-css';
@@ -32,6 +33,7 @@ function stopPlayerEvent(event: SyntheticEvent): void {
 export function QuickToggle() {
   const { settings, set } = useSettings();
   const { state, retryAll } = useSession();
+  const { exportSrt, exportTxt, formatOpen, setFormatOpen } = useSubtitleExport();
   const css = useShadowCss();
   const [host, setHost] = useState<QuickToggleHost | null>(null);
   const enabled = settings.ui.enabled;
@@ -102,7 +104,7 @@ export function QuickToggle() {
   ) : null;
 
   return (
-    <Popover>
+    <Popover onOpenChange={(open) => { if (!open) setFormatOpen(false); }}>
       {cluster}
       <PopoverContent
         side="top"
@@ -155,15 +157,38 @@ export function QuickToggle() {
           >
             设置
           </button>
-          <button
-            type="button"
-            data-earworm-export
-            disabled
-            title="字幕导出（即将推出）"
-            className="rounded-md px-2 py-1 text-left text-[#BAA7FF] disabled:opacity-60"
-          >
-            字幕导出（即将推出）
-          </button>
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              data-earworm-export
+              aria-expanded={formatOpen}
+              title="导出双语字幕"
+              onClick={() => setFormatOpen((open) => !open)}
+              className="rounded-md px-2 py-1 text-left text-[#BAA7FF] hover:bg-[#33255B]"
+            >
+              字幕导出
+            </button>
+            {formatOpen ? (
+              <div data-earworm-export-formats className="flex gap-2 pl-2">
+                <button
+                  type="button"
+                  data-earworm-export-srt
+                  onClick={exportSrt}
+                  className="rounded-md border border-[#473876] px-2 py-1 font-medium text-[#E2DDFE] hover:bg-[#33255B]"
+                >
+                  SRT
+                </button>
+                <button
+                  type="button"
+                  data-earworm-export-txt
+                  onClick={exportTxt}
+                  className="rounded-md border border-[#473876] px-2 py-1 font-medium text-[#E2DDFE] hover:bg-[#33255B]"
+                >
+                  TXT
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </PopoverContent>
     </Popover>
