@@ -1,5 +1,7 @@
 # Earworm
 
+![Earworm logo](./public/brand/earworm-logo-full.png)
+
 英语听力学习浏览器扩展（Chrome / Edge，Manifest V3）：在 YouTube 上提供双语字幕、
 逐句复听与点词查词。
 

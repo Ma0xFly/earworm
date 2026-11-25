@@ -11,6 +11,14 @@ export default defineConfig({
     name: 'Earworm',
     description: 'YouTube 双语字幕英语学习扩展：双语字幕、逐句复听、点词查词',
     version: '0.1.0',
+    // WXT's icon auto-discovery only matches `icon-N.png` at the public root;
+    // the finalized logo lives under public/brand/, so declare it explicitly.
+    icons: {
+      '16': 'brand/earworm-icon-16.png',
+      '32': 'brand/earworm-icon-32.png',
+      '48': 'brand/earworm-icon-48.png',
+      '128': 'brand/earworm-icon-128.png',
+    },
     options_ui: {
       page: 'options.html',
       open_in_tab: true,
@@ -20,7 +28,9 @@ export default defineConfig({
     optional_host_permissions: ['http://*/*', 'https://*/*'],
     web_accessible_resources: [
       {
-        resources: ['data/*'],
+        // brand/* must be web-accessible so #31's control-bar <img> can load
+        // the finalized logo from a YouTube page.
+        resources: ['data/*', 'brand/*'],
         matches: ['https://www.youtube.com/*'],
       },
     ],
