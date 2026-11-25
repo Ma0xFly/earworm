@@ -214,6 +214,84 @@ describe('MAIN-world inject runtime', () => {
     });
   });
 
+  it('ignores an early ASR capture when a manual English track exists', async () => {
+    const fetchImpl = vi.fn(async () => response(englishJson));
+    start(fetchImpl, {
+      tracks: [
+        { languageCode: 'en', kind: 'asr', vssId: 'a.en' },
+        { languageCode: 'en', vssId: '.en' },
+      ],
+    });
+
+    produce('vid1');
+    await window.fetch(captured('vid1', 'lang=en&kind=asr&pot=POT-ASR&signature=SIG-ASR'));
+    await flush();
+
+    // The ASR capture must not steal the source or start a session.
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(posted().filter((message) => message.type === INJECT_MESSAGE.cuesReady)).toHaveLength(0);
+
+    // The player is nudged onto the human track instead.
+    expect(player.loadModule).toHaveBeenCalledWith('captions');
+    await vi.advanceTimersByTimeAsync(300);
+    expect(player.setOption).toHaveBeenCalledWith('captions', 'track', {
+      languageCode: 'en',
+      vssId: '.en',
+    });
+
+    // The human capture that follows is the one that produces cues.
+    await window.fetch(captured('vid1'));
+    await flush();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(posted()).toContainEqual({
+      __earworm: true,
+      dir: 'inject-to-content',
+      type: INJECT_MESSAGE.cuesReady,
+      payload: { videoId: 'vid1', lang: 'en', kind: 'manual', cues: expectedCues },
+    });
+  });
+
+  it('ignores a later ASR capture once the manual track was captured', async () => {
+    const fetchImpl = vi.fn(async () => response(englishJson));
+    start(fetchImpl, {
+      tracks: [
+        { languageCode: 'en', kind: 'asr', vssId: 'a.en' },
+        { languageCode: 'en', vssId: '.en' },
+      ],
+    });
+
+    produce('vid1');
+    await window.fetch(captured('vid1'));
+    await flush();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(posted().filter((message) => message.type === INJECT_MESSAGE.cuesReady)).toHaveLength(1);
+
+    await window.fetch(captured('vid1', 'lang=en&kind=asr&pot=POT-ASR&signature=SIG-ASR'));
+    await flush();
+
+    // No second fetch and no session replacement: the manual track keeps winning.
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(posted().filter((message) => message.type === INJECT_MESSAGE.cuesReady)).toHaveLength(1);
+    expect(posted()[0]?.payload).toMatchObject({ kind: 'manual' });
+  });
+
+  it('accepts an ASR capture when the readable track list has no manual English track', async () => {
+    const fetchImpl = vi.fn(async () => response(englishJson));
+    start(fetchImpl, { tracks: [{ languageCode: 'en', kind: 'asr', vssId: 'a.en' }] });
+
+    produce('vid1');
+    await window.fetch(captured('vid1', 'lang=en&kind=asr&pot=POT-ASR&signature=SIG-ASR'));
+    await flush();
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(posted()).toContainEqual({
+      __earworm: true,
+      dir: 'inject-to-content',
+      type: INJECT_MESSAGE.cuesReady,
+      payload: { videoId: 'vid1', lang: 'en', kind: 'asr', cues: expectedCues },
+    });
+  });
+
   it('ignores non-English and other-video captures', async () => {
     const fetchImpl = vi.fn(async () => response(englishJson));
     start(fetchImpl);
