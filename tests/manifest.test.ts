@@ -33,6 +33,28 @@ describe('built extension manifest', () => {
     expect(existsSync(path.join(outputDir, 'data', 'README.md'))).toBe(true);
   });
 
+  it('ships the finalized logo as extension icons and exposes brand assets to YouTube', () => {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      icons?: Record<string, string>;
+      web_accessible_resources?: Array<{ resources?: string[]; matches?: string[] }>;
+    };
+
+    for (const size of ['16', '32', '48', '128']) {
+      const expected = `brand/earworm-icon-${size}.png`;
+      expect(manifest.icons?.[size], `icons.${size}`).toBe(expected);
+      expect(existsSync(path.join(outputDir, expected)), expected).toBe(true);
+    }
+    expect(manifest.icons && Object.values(manifest.icons)).not.toContain(
+      'brand/earworm-icon-source.png',
+    );
+
+    const brandWar = (manifest.web_accessible_resources ?? []).find((entry) =>
+      entry.resources?.includes('brand/*'),
+    );
+    expect(brandWar, 'web_accessible_resources must expose brand/*').toBeDefined();
+    expect(brandWar?.matches).toContain('https://www.youtube.com/*');
+  });
+
   it('ships attribution and keeps the MAIN-world inject script chrome-free', () => {
     for (const file of ['LICENSE', 'NOTICE']) {
       expect(existsSync(path.join(outputDir, file)), file).toBe(true);

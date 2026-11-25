@@ -187,6 +187,11 @@ export function OptionsApp() {
     <main className="earworm-options min-h-screen bg-muted/30 py-10">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 sm:px-6">
         <header className="flex flex-col gap-2">
+          <img
+            src={chrome.runtime.getURL('brand/earworm-logo-full.png')}
+            alt="Earworm"
+            className="h-auto w-24"
+          />
           <h1 id="options-title" className="m-0 text-2xl font-semibold tracking-tight">
             Earworm 设置
           </h1>
