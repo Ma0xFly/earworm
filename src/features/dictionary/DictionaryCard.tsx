@@ -35,25 +35,24 @@ function displayPhonetic(phonetic: string | undefined): string | null {
   return `/${clean}/`;
 }
 
+/** Exam tags are deliberately neutral: purple is reserved for collocations. */
 const TAG_CLASS =
-  'inline-flex items-center rounded-full border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-medium leading-none text-secondary-foreground';
+  'inline-flex items-center rounded-full border border-border bg-secondary px-1.5 py-0.5 text-[11px] font-semibold leading-none text-secondary-foreground';
 
 function CollocationCard({ span }: { span: CollocationSpan }) {
   return (
     <div
       data-ew-dict-collocation
       data-source={span.source}
-      className="mb-2 rounded-md border border-amber-300/80 bg-amber-50 px-2 py-1.5 text-amber-950"
+      className="mb-2 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-collocation"
     >
       <div className="flex flex-wrap items-baseline gap-x-1.5">
-        <span className="text-[10px] font-semibold tracking-wide text-amber-700 uppercase">
-          搭配
-        </span>
-        <span data-ew-dict-phrase className="text-sm font-semibold">
+        <span className="text-[11px] font-semibold tracking-wide uppercase">搭配</span>
+        <span data-ew-dict-phrase className="text-[13px] font-semibold text-collocation">
           {span.text}
         </span>
       </div>
-      <p data-ew-dict-note className="mt-0.5 text-xs leading-snug text-amber-800">
+      <p data-ew-dict-note className="mt-0.5 text-[13px] leading-snug text-collocation/80">
         {span.note ?? '离线搭配'}
       </p>
     </div>
@@ -86,14 +85,14 @@ function EntryDetails({ entry }: { entry: WordEntry }) {
         ) : null}
         <span
           data-ew-dict-headword
-          className="min-w-0 break-words text-lg font-semibold leading-tight"
+          className="min-w-0 break-words text-[22px] font-bold leading-tight"
         >
           {entry.word}
         </span>
       </div>
 
       {phonetic || entry.pos ? (
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground">
           {phonetic ? <span data-ew-dict-phonetic>{phonetic}</span> : null}
           {entry.pos ? (
             <span data-ew-dict-pos className="italic">
@@ -116,7 +115,7 @@ function EntryDetails({ entry }: { entry: WordEntry }) {
       {translation ? (
         <div
           data-ew-dict-translation
-          className="mt-2 max-h-40 overflow-y-auto overscroll-contain whitespace-pre-line text-sm leading-snug"
+          className="mt-2 max-h-40 overflow-y-auto overscroll-contain whitespace-pre-line text-sm leading-[1.6]"
         >
           {translation}
         </div>

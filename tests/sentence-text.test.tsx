@@ -46,6 +46,18 @@ describe('SentenceText', () => {
     expect(container.querySelector('[data-lang="en"]')).not.toBeNull();
   });
 
+  it('highlights a collocation with purple text only and no background', () => {
+    const container = renderSentence(
+      <SentenceText text="Never give up." cols={[col(6, 13, 'give up')]} />,
+    );
+
+    const mark = container.querySelector('mark[data-collocation]');
+    expect(mark?.classList.contains('text-collocation')).toBe(true);
+    // Preflight is off, so the UA <mark> background has to be reset explicitly.
+    expect(mark?.classList.contains('bg-transparent')).toBe(true);
+    expect(mark?.className).not.toMatch(/bg-(yellow|amber|violet|primary)/);
+  });
+
   it('renders several collocations without losing or duplicating characters', () => {
     const container = renderSentence(
       <SentenceText

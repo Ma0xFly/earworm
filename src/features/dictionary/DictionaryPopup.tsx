@@ -223,7 +223,7 @@ function PopupShell({
         maxHeight: position.maxHeight,
         zIndex: 80,
       }}
-      className="pointer-events-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
+      className="pointer-events-auto rounded-lg border border-violet-6 bg-popover text-popover-foreground shadow-xl"
       onPointerDown={stopPlayerEvent}
       onMouseDown={stopPlayerEvent}
       onClick={stopPlayerEvent}

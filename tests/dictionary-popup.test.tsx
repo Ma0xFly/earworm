@@ -137,6 +137,9 @@ describe('dictionary popup content', () => {
     const tags = Array.from(document.querySelectorAll('[data-ew-dict-tag]'));
     expect(tags.map((tag) => tag.textContent)).toEqual(['中考']);
     expect(tags[0]).toHaveAttribute('data-tag', 'zk');
+    // Purple means collocation only: exam tags stay neutral pills.
+    expect(tags[0]?.className).toContain('bg-secondary');
+    expect(tags[0]?.className).not.toMatch(/collocation|violet|purple|amber/);
   });
 });
 
@@ -193,6 +196,25 @@ describe('dictionary popup collocations', () => {
     // The phrase card is rendered before the dictionary entry.
     const headword = document.querySelector('[data-ew-dict-headword]');
     expect(card?.nextElementSibling).toContainElement(headword as HTMLElement);
+
+    // Collocation semantics use the violet text token, not an amber badge.
+    expect(card?.className).toContain('text-collocation');
+    expect(card?.className).not.toMatch(/amber|bg-(violet|primary|collocation)/);
+    expect(document.querySelector('[data-ew-dict-phrase]')?.className).toContain(
+      'text-collocation',
+    );
+  });
+
+  it('uses an opaque dark surface with a violet border for the popup', async () => {
+    sessionMock.api = makeSession([makeSentence(0, 'I was running fast.')]);
+    renderPopup();
+    fireEvent.click(addWord('running', 6));
+
+    const popup = popupRoot();
+    expect(popup).not.toBeNull();
+    expect(popup?.className).toContain('bg-popover');
+    expect(popup?.className).toContain('border-violet-6');
+    expect(popup?.className).not.toMatch(/bg-(white|black| amber)/);
   });
 
   it('falls back to 「离线搭配」 for an offline span and resolves the clicked sidebar row', async () => {

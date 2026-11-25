@@ -92,6 +92,16 @@ describe('shadow DOM host', () => {
     ui.unmount();
   });
 
+  it('forces the dark surface on both the app and the portal container', () => {
+    // The dictionary popup is portaled to a sibling of the React root, so the
+    // class must be on both nodes for dark tokens to reach every surface.
+    const ui = mountUi();
+    expect(ui.container.classList.contains('dark')).toBe(true);
+    expect(ui.portalContainer.classList.contains('dark')).toBe(true);
+    expect(ui.shadow.querySelectorAll('.dark')).toHaveLength(2);
+    ui.unmount();
+  });
+
   it('re-parents into the fullscreen element and back to body', () => {
     const fullscreenElement = document.createElement('div');
     fullscreenElement.id = 'fake-fullscreen';
