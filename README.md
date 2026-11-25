@@ -51,7 +51,7 @@ node scripts/audit-attribution.mjs
 2. Chrome / Edge 打开 `chrome://extensions`。
 3. 打开右上角「开发者模式」，点击「加载已解压的扩展程序」。
 4. 选择 `.output/chrome-mv3`。
-5. 打开任意有英文字幕的 YouTube 视频（人工字幕优先，无人工轨时自动英文字幕 ASR 兜底），扩展会挂载字幕 overlay 和右侧列表；无英文字幕的视频显示「无字幕」。
+5. 打开任意有英文字幕的 YouTube 视频（人工字幕优先，无人工轨时自动英文字幕 ASR 兜底），扩展会挂载字幕 overlay 和右栏逐句面板；无英文字幕的视频显示「无字幕」。
 
 完整手工验收步骤、候选视频、逐项预期与结果记录见
 [`docs/acceptance.md`](./docs/acceptance.md)；端到端 mock 测试在

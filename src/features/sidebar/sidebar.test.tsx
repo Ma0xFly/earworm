@@ -371,6 +371,23 @@ describe('sidebar placement', () => {
     expect(style?.textContent).toContain(':host([data-blur-en="1"]) [data-lang="en"]');
   });
 
+  it('prepends to #secondary itself when the inner column is absent', async () => {
+    setViewportWidth(1440);
+    const secondary = addSecondary();
+    const recommended = document.createElement('div');
+    recommended.setAttribute('data-recommended', '');
+    secondary.appendChild(recommended);
+
+    await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
+
+    const host = sidebarHost();
+    expect(host).not.toBeNull();
+    expect(host?.parentElement).toBe(secondary);
+    expect(secondary.firstElementChild).toBe(host);
+    expect(secondary.children[1]).toBe(recommended);
+    expect(panel()).toHaveAttribute('data-mode', 'docked');
+  });
+
   it('gives the docked panel a fixed height with its own scrolling list', async () => {
     setViewportWidth(1440);
     addSecondaryWithInner();
