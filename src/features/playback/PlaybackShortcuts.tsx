@@ -1,7 +1,7 @@
 /**
  * a / s / d sentence shortcuts.
  *
- * Mounted once by `ContentApp` next to the overlay/sidebar. Besides the key
+ * Mounted once by `ContentApp` next to the overlay. Besides the key
  * handler it owns the controller attach lifecycle: it keeps the singleton
  * `playerController` attached to the current watch-page video across YouTube
  * SPA navigation. Keydown is the only handled event; a/s/d are dispatched

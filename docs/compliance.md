@@ -53,9 +53,6 @@ node scripts/audit-attribution.mjs          # 在仓库根运行；也可传入�
 | 13 | `src/features/playback/attach.ts` | Nitrino/easysubs 3.1.3（YouTube adapter） | MIT | OK |
 | 14 | `src/features/playback/controller.ts` | easysubs（sentence seek）+ SceneLingo（rAF/latch） | MIT | OK |
 | 15 | `src/features/playback/keyboard.ts` | easysubs（typing guard）+ SceneLingo（key guards） | MIT | OK |
-| 16 | `src/features/sidebar/Sidebar.tsx` | easysubs（transcript panel） | MIT | OK |
-| 17 | `src/features/sidebar/SentenceRow.tsx` | easysubs（transcript row） | MIT | OK |
-| 18 | `src/features/sidebar/useAutoScroll.ts` | easysubs（auto-scroll） | MIT | OK |
 
 标准头格式（每文件顶部）：
 
@@ -71,9 +68,9 @@ Full upstream MIT permission text: see NOTICE.
   page-style/LLM channel 均据其源码改写；翻译 prompt 文本为 Earworm 自写，
   只保留通道形状与重试策略的归属。
 - **easysubs**：MIT，Copyright (c) 2022 Seo Jong Hak。playback 的句级
-  previous/repeat/next 语义、YouTube adapter、键盘 typing guard，以及 sidebar
-  的行/面板/自动滚动行为被改编；快捷键映射（`a`/`s`/`d`）与成句模型是
-  Earworm 自研。
+  previous/repeat/next 语义、YouTube adapter 与键盘 typing guard 被改编；
+  快捷键映射（`a`/`s`/`d`）与成句模型是 Earworm 自研。v1.1 删除侧栏后，
+  原先改编自 easysubs 的行/面板/自动滚动代码已一并移除，MIT 归属声明保留。
 - **SceneLingo**：MIT，Copyright (c) 2026 Umut。仅借鉴 playback 的
   requestAnimationFrame + per-range latch 自动暂停模式与键盘注册 guard；
   没有 vendored 文件，也没有复制其 word/phrase prompt 文本。因其源码被阅读并
@@ -164,10 +161,10 @@ node scripts/audit-attribution.mjs  PASS — 66/66 checks
    把根目录 `LICENSE` / `NOTICE` 复制到扩展根目录；`scripts/verify-manifest.ts`
    与 `tests/manifest.test.ts` 会断言两者存在。发行时仍需确认商店包完整保留
    这两个文件（部分商店会剔除未知文件）。
-7. **范围偏差（已记录）**：`src/lib/ui/page-style.ts` 与
-   `src/features/sidebar/*` 不在本 ticket 最初列出的目录清单中，但它们是实际
-   adapted 文件；本次只补/规范了顶部版权注释，没有改逻辑。新增
-   `scripts/audit-attribution.mjs` 作为可复现审计工具，未改 `package.json`。
+7. **范围偏差（已记录）**：`src/lib/ui/page-style.ts` 不在本 ticket 最初列出的
+   目录清单中，但它是实际 adapted 文件；本次只补/规范了顶部版权注释，没有改逻辑。
+   新增 `scripts/audit-attribution.mjs` 作为可复现审计工具，未改 `package.json`。
+   v1.1 删除侧栏时，其 adapted 文件与审计条目已同步移除。
 
 ## 相关文件
 

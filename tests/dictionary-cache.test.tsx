@@ -52,7 +52,6 @@ function makeSession(sentence: LearningSentence): SessionApi {
     retrySentence: vi.fn(),
     retryAll: vi.fn(),
     setContinuous: vi.fn(),
-    toggleSidebar: vi.fn(),
   };
 }
 

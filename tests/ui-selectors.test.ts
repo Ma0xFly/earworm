@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import * as selectors from '@/lib/ui/selectors';
 import {
   CAPTION_SELECTOR,
   CAPTION_TEXT_SELECTOR,
@@ -37,8 +38,12 @@ describe('page selector map', () => {
     expect(PAGE_SELECTORS.controlBar).toBe('.ytp-chrome-bottom');
     expect(PAGE_SELECTORS.controlButtons).toBe('.ytp-right-controls');
     expect(PAGE_SELECTORS.subtitlesButton).toBe('.ytp-subtitles-button');
-    expect(PAGE_SELECTORS.secondary).toBe('#secondary');
-    expect(PAGE_SELECTORS.secondaryInner).toBe('#secondary-inner');
+    expect('secondary' in PAGE_SELECTORS).toBe(false);
+    expect('secondaryInner' in PAGE_SELECTORS).toBe(false);
+  });
+
+  it('does not expose the sidebar-only slot lookup', () => {
+    expect('findSecondarySlot' in selectors).toBe(false);
   });
 
   it('exposes combined caption selectors for styling and scraping', () => {

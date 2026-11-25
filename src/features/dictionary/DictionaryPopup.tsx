@@ -1,22 +1,22 @@
 /**
  * Click-a-word dictionary popup (F4).
  *
- * The popup is mounted once by T1's `ContentApp`. Because `ContentApp` cannot
- * be edited by this ticket and `Overlay`/`Sidebar` do not pass a word-click
- * prop, this component owns the trigger itself through **event delegation**:
+ * The popup is mounted once by `ContentApp`. Because `Overlay` does not pass a
+ * word-click prop, this component owns the trigger itself through **event
+ * delegation**:
  *
  * - a capture listener on `document` inspects `event.composedPath()` for the
- *   nearest `[data-word]` (works for the overlay and the sidebar alike);
- * - the enclosing sentence comes from the nearest `[data-sentence-id]` row,
+ *   nearest `[data-word]`;
+ * - the enclosing sentence comes from the nearest `[data-sentence-id]` node,
  *   falling back to `session.state.sentences[currentIndex]`;
  * - `data-offset` resolves the containing `CollocationSpan` (LLM span first);
  * - `lookupWord(surface)` loads the ECDICT entry, memoized per surface;
  * - the card renders through `usePortalContainer()` into the T1 shadow root,
  *   never `document.body`.
  *
- * When a word is hit the click is stopped in the capture phase so the sidebar
- * row's seek handler does not fire. Clicks inside the popup are isolated from
- * YouTube's player handlers.
+ * When a word is hit the click is stopped in the capture phase so YouTube's
+ * player handlers cannot consume it. Clicks inside the popup are isolated the
+ * same way.
  *
  * `openWord()` is the programmatic entry point for tests and the playground.
  */
@@ -150,7 +150,7 @@ function findWordElement(path: readonly EventTarget[]): Element | null {
 /**
  * Open the dictionary for a word programmatically (tests, playground, future
  * other triggers). `element` supplies the anchor rect and, when present, the
- * enclosing sidebar row / `data-offset`; `sentence` overrides that lookup.
+ * enclosing sentence node / `data-offset`; `sentence` overrides that lookup.
  */
 export function openWord(
   word: string,
@@ -339,8 +339,8 @@ export function DictionaryPopup(): ReactElement | null {
           word.getAttribute('data-word')?.trim() || word.textContent?.trim() || '';
         if (!surface) return;
 
-        // Stop the sidebar row's seek handler before it ever runs. The card is
-        // opened from the capture phase, so the target never sees the click.
+        // Keep YouTube's player handler from consuming the click. The card is
+        // opened from the capture phase, so the target never sees it.
         event.preventDefault();
         event.stopPropagation();
         openRequest({

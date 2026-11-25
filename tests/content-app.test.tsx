@@ -20,7 +20,7 @@ describe('content app shell', () => {
     seedStorage(SETTINGS_STORAGE_KEY, {
       ...DEFAULT_SETTINGS,
       blur: { en: true, zh: false },
-      ui: { sidebar: true },
+      ui: { enabled: true },
     });
 
     const ui = createShadowUi({ css: '' });
@@ -44,6 +44,26 @@ describe('content app shell', () => {
 
     act(() => root.unmount());
     ui.unmount();
+  });
+
+  it('mounts no sidebar DOM, with or without a recommended column', async () => {
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<div id="secondary"><div id="secondary-inner"></div></div>',
+    );
+
+    let mounted: ReturnType<typeof mountContentApp> | null = null;
+    await act(async () => {
+      mounted = mountContentApp({ css: '/* test css */' });
+    });
+
+    expect(document.querySelector('earworm-sidebar-host')).toBeNull();
+    expect(document.querySelector('[data-earworm-sidebar-host]')).toBeNull();
+    const app = mounted as ReturnType<typeof mountContentApp> | null;
+    expect(app?.ui.container.querySelector('[data-earworm-sidebar]')).toBeNull();
+    expect(document.querySelector('#secondary-inner')?.childElementCount).toBe(0);
+
+    act(() => unmountContentApp());
   });
 
   it('does not hide native captions before captions are ready, and mounts cleanly', async () => {

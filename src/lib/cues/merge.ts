@@ -1,5 +1,5 @@
 /**
- * Cue → sentence merging for the overlay/sidebar/navigation pipeline.
+ * Cue → sentence merging for the overlay/navigation pipeline.
  *
  * Pure function: no DOM, no chrome APIs. Consumes YouTube's 2–3 s cues and
  * emits the "字幕句" (Sentence) unit defined in `GLOSSARY.md` and

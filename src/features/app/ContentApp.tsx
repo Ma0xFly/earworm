@@ -1,6 +1,5 @@
 import { useSettings } from '@/lib/settings';
 import { Overlay } from '@/features/overlay';
-import { Sidebar } from '@/features/sidebar';
 import { BlurStyles, blurDataAttributes } from '@/features/blur';
 import { DictionaryPopup } from '@/features/dictionary';
 import { PlaybackShortcuts } from '@/features/playback';
@@ -12,8 +11,8 @@ import { QuickToggle } from '@/features/quick-toggle';
  * The app root carries the blur attributes consumed by the blur stylesheet
  * (`[data-blur-en="1"] [data-lang="en"]`, etc.). The quick toggle is always
  * mounted: its single click flips the persisted global switch, which hides the
- * learning UI (overlay, sidebar, dictionary), restores native captions (the
- * Overlay suppression effect cleans up on unmount) and lets a/s/d yield.
+ * learning UI (overlay, dictionary), restores native captions (the Overlay
+ * suppression effect cleans up on unmount) and lets a/s/d yield.
  */
 export function ContentApp() {
   const { settings } = useSettings();
@@ -32,7 +31,6 @@ export function ContentApp() {
       {enabled ? (
         <>
           <Overlay />
-          <Sidebar />
           <DictionaryPopup />
         </>
       ) : null}

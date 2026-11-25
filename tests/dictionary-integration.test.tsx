@@ -80,7 +80,6 @@ function makeSession(
     retrySentence: vi.fn(),
     retryAll: vi.fn(),
     setContinuous: vi.fn(),
-    toggleSidebar: vi.fn(),
   };
 }
 
@@ -185,7 +184,7 @@ describe('programmatic openWord', () => {
     });
   });
 
-  it('resolves the clicked sidebar row for the collocation lookup', async () => {
+  it('resolves the collocation from the word\'s enclosing sentence node', async () => {
     const offlineHold = {
       start: 10,
       end: 17,

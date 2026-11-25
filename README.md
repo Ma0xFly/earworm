@@ -12,7 +12,6 @@
 - **双语字幕**：英文原文 + 自有 LLM 中文翻译，叠加在播放器上；会话就绪时原生字幕层被视觉抑制，获取失败/无字幕时保留原生字幕。
 - **字幕来源**：英文字幕人工轨优先；无人工轨时使用 YouTube 官方自动英文字幕（ASR）兜底，ASR 按停顿与词数成句。只有完全没有英文字幕才显示「无字幕」。
 - **模糊**：英 / 中字幕可独立模糊，悬停临时看清。
-- **逐句列表**：插入 YouTube 右栏（`#secondary`）文档流顶部，推荐视频被推到面板下方；面板定高、列表内部独立滚动，当前句高亮并自动滚动，点击跳转；页面下滑时随页面滚走，全屏时转为右侧抽屉。
 - **逐句播放**：`a` / `s` / `d` = 上一句 / 重复当前句 / 下一句；默认句尾暂停，可切换连续播放。
 - **点词词典**：点击字幕单词弹出音标、中文释义、词性与考试标签；命中搭配时显示搭配条目。
 - **搭配高亮**：离线 OpenSubtitles 二元表立即高亮，LLM 标注的搭配随后叠加。
@@ -42,10 +41,9 @@ pnpm typecheck && pnpm test && pnpm build
 node scripts/audit-attribution.mjs
 ```
 
-开发时 UI 主要渲染在一个 body 级 shadow root 中，与 YouTube 页面样式互相隔离；
-右栏逐句侧栏使用第二个嵌套 shadow host（`<earworm-sidebar-host>`，插在
-`#secondary-inner` 文档流首位）以进入页面布局。Tailwind 的 preflight 被刻意关闭
-（只引入 theme + utilities），避免重置宿主页面。
+开发时 UI 渲染在 body 级 shadow root 中，与 YouTube 页面样式互相隔离；控制栏快捷开关
+另有一个嵌套 shadow host 承载按钮簇。Tailwind 的 preflight 被刻意关闭（只引入 theme +
+utilities），避免重置宿主页面。
 
 ### 加载未打包扩展
 
@@ -53,7 +51,7 @@ node scripts/audit-attribution.mjs
 2. Chrome / Edge 打开 `chrome://extensions`。
 3. 打开右上角「开发者模式」，点击「加载已解压的扩展程序」。
 4. 选择 `.output/chrome-mv3`。
-5. 打开任意有英文字幕的 YouTube 视频（人工字幕优先，无人工轨时自动英文字幕 ASR 兜底），扩展会挂载字幕 overlay 和右栏逐句面板；无英文字幕的视频显示「无字幕」。
+5. 打开任意有英文字幕的 YouTube 视频（人工字幕优先，无人工轨时自动英文字幕 ASR 兜底），扩展会在播放器上挂载双语字幕 overlay 与控制栏快捷开关；无英文字幕的视频显示「无字幕」。
 
 完整手工验收步骤、候选视频、逐项预期与结果记录见
 [`docs/acceptance.md`](./docs/acceptance.md)；端到端 mock 测试在
@@ -131,7 +129,7 @@ src/
   entrypoints/        WXT 入口：content、inject（MAIN world）、background、options
   lib/                共享契约、消息、设置、shadow DOM 壳、数据访问 stub
   components/ui/      vendored shadcn/ui 组件
-  features/           功能模块（overlay / sidebar / playback / blur / dictionary /
+  features/           功能模块（overlay / quick-toggle / playback / blur / dictionary /
                       reading / session / options）
 public/data/          离线数据生成物
 scripts/              数据构建脚本

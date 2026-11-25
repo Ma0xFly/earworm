@@ -273,8 +273,8 @@ input {
   grid-template-columns: minmax(0, 1fr) 402px;
   gap: 24px;
   align-items: start;
-  /* Full width (not centered): T9's docked sidebar is pinned to
-   * `viewport - 24px`, so the mock `#secondary` column must end there too. */
+  /* Full width (not centered): the mock `#secondary` column ends at
+   * `viewport - 24px`, matching the watch-page gutter. */
   padding: 24px;
 }
 

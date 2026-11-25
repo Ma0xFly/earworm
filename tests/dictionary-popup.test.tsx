@@ -73,7 +73,6 @@ function makeSession(
     retrySentence: vi.fn(),
     retryAll: vi.fn(),
     setContinuous: vi.fn(),
-    toggleSidebar: vi.fn(),
   };
 }
 
@@ -271,7 +270,7 @@ describe('dictionary popup collocations', () => {
     expect(popup?.className).not.toMatch(/bg-(white|black| amber)/);
   });
 
-  it('falls back to 「离线搭配」 for an offline span and resolves the clicked sidebar row', async () => {
+  it('falls back to 「离线搭配」 for an offline span and resolves the clicked sentence node', async () => {
     sessionMock.api = makeSession(
       [
         makeSentence(0, 'Something else.'),
@@ -298,7 +297,7 @@ describe('dictionary popup collocations', () => {
     expect(document.querySelector('[data-ew-dict-note]')).toHaveTextContent('离线搭配');
     expect(document.querySelector('[data-ew-dict-headword]')).toHaveTextContent('hold');
 
-    // The sidebar row's seek handler must not run for a word click.
+    // The enclosing node's click handler must not run for a word click.
     expect(seek).not.toHaveBeenCalled();
   });
 });

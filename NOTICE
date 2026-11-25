@@ -52,11 +52,8 @@ file. The per-file audit is recorded in
   - `src/features/playback/attach.ts`, `controller.ts`, `keyboard.ts` —
     sentence-level previous / repeat / next seeking semantics, the YouTube
     `<video>` adapter lifecycle, and the typing-target keyboard guard.
-  - `src/features/sidebar/Sidebar.tsx`, `SentenceRow.tsx`,
-    `useAutoScroll.ts` — transcript row behaviour, panel event isolation and
-    auto-scroll behaviour.
 - Earworm's key mapping (`a` / `s` / `d`) and the sentence-merging model are
-  Earworm's own; only the navigation and sidebar behaviour was adapted.
+  Earworm's own; only the navigation behaviour was adapted.
 
 ### SceneLingo
 

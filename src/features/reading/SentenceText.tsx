@@ -5,7 +5,7 @@ import { normalizeWord, tokenizeWords, type TextToken } from '@/lib/text/tokeniz
 /**
  * Sentence renderer with clickable words and collocation highlighting.
  *
- * Contract kept for overlay/sidebar/dictionary:
+ * Contract kept for overlay/dictionary:
  * - `text` is rendered losslessly (`textContent === text`), including original
  *   spacing, punctuation, case and astral characters;
  * - the root carries `data-lang`;
@@ -33,7 +33,7 @@ function clampSpan(span: CollocationSpan, text: string): CollocationSpan | null 
 /**
  * Clamp to the sentence, sort, and drop overlaps. Earlier (then longer) spans
  * win; the runtime union already guarantees non-overlap, this is defence in
- * depth for direct callers (overlay/sidebar) and malformed fixtures.
+ * depth for direct callers (overlay) and malformed fixtures.
  */
 function normalizeSpans(
   cols: readonly CollocationSpan[] | undefined,

@@ -8,10 +8,11 @@ describe('shared contracts', () => {
     expect(DEFAULT_SETTINGS.llm.apiKey).toBe('');
   });
 
-  it('defaults blur and continuous playback to off, sidebar to on', () => {
+  it('defaults blur and continuous playback to off without a sidebar setting', () => {
     expect(DEFAULT_SETTINGS.blur).toEqual({ en: false, zh: false });
     expect(DEFAULT_SETTINGS.playback.continuous).toBe(false);
-    expect(DEFAULT_SETTINGS.ui.sidebar).toBe(true);
+    expect(DEFAULT_SETTINGS.ui).toEqual({ enabled: true });
+    expect('sidebar' in DEFAULT_SETTINGS.ui).toBe(false);
     expect(DEFAULT_SETTINGS.version).toBe(1);
   });
 });

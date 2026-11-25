@@ -17,7 +17,6 @@ const session = vi.hoisted(() => ({
   retrySentence: vi.fn(),
   retryAll: vi.fn(),
   setContinuous: vi.fn(),
-  toggleSidebar: vi.fn(),
 }));
 
 vi.mock('@/features/session', () => ({

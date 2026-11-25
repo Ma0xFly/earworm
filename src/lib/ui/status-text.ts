@@ -1,6 +1,6 @@
 /**
- * User-facing acquisition status wording shared by the overlay and sidebar.
- * Keeping one map avoids three slightly different Chinese labels drifting.
+ * User-facing acquisition status wording shared by the overlay and quick menu.
+ * Keeping one map avoids slightly different Chinese labels drifting.
  */
 export const SESSION_STATUS_TEXT = {
   acquiring: '字幕载入中…',

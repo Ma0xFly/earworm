@@ -1,10 +1,8 @@
 /**
- * Blur attribute mapping shared by the body-level app root and the nested
- * sidebar host.
+ * Blur attribute mapping for the body-level app root.
  *
  * The blur stylesheet targets `data-blur-en` / `data-blur-zh` with the string
- * values `"1"` / `"0"`; both DOM owners must encode the two independent
- * switches identically, so the mapping lives in one place.
+ * values `"1"` / `"0"`; the two independent switches are encoded in one place.
  */
 
 import type { Settings } from '@/lib/contracts';
