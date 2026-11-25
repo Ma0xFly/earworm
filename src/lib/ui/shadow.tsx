@@ -1,10 +1,14 @@
 /**
  * Body-level shadow DOM host for the whole Earworm UI.
  *
- * Contract layout (one body-level shadow host):
+ * Contract layout (one body-level shadow host, plus one nested sidebar host):
  * - ONE `<earworm-root>` host appended to `<body>` with
  *   `position:fixed; inset:0; pointer-events:none; z-index:2147483000`, so
  *   YouTube player ancestors can never clip it.
+ * - The docked sentence sidebar renders through a portal into a SECOND nested
+ *   host placed in YouTube's `#secondary-inner` document flow (see
+ *   `src/features/sidebar/host.ts`). This module's host still owns the overlay,
+ *   the fullscreen/drawer sidebar, and the Radix portal.
  * - CSS is injected into the shadow root only (callers pass the compiled
  *   `?inline` stylesheet). Nothing is added to the host document's `<head>`,
  *   and Tailwind preflight is not part of that stylesheet.
@@ -12,7 +16,8 @@
  *   `document.fullscreenElement` and moved back to `<body>` afterwards.
  * - The player rect is published as CSS variables on the host:
  *   `--ew-player-left/top/width/height` (+ bottom/right conveniences) so the
- *   overlay and sidebar can align without JS layout branches.
+ *   overlay and the fullscreen/drawer sidebar can align without JS layout
+ *   branches.
  */
 
 import { findPlayerElement } from './selectors';
