@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Cue } from '@/lib/contracts';
 import { REALISTIC_CUES, REALISTIC_SENTENCES } from './__fixtures__/realistic';
-import { mergeCuesToSentences } from './merge';
+import { ASR_MAX_WORDS, ASR_PAUSE_SECONDS, mergeCuesToSentences } from './merge';
 
 describe('mergeCuesToSentences', () => {
   it('keeps one punctuated cue as one sentence', () => {
@@ -214,5 +214,127 @@ describe('mergeCuesToSentences', () => {
         expect(sentence.cueStart).toBeGreaterThanOrEqual(sentences[index - 1]!.cueEnd);
       }
     }
+  });
+});
+
+describe('mergeCuesToSentences (ASR)', () => {
+  it('exports the spec defaults for ASR sentence boundaries', () => {
+    expect(ASR_PAUSE_SECONDS).toBe(0.8);
+    expect(ASR_MAX_WORDS).toBe(20);
+  });
+
+  it('does not pause-split manual cues (the default merge is unchanged)', () => {
+    const cues: Cue[] = [
+      { start: 0, end: 1.5, text: 'Hello there' },
+      { start: 3, end: 4.5, text: 'how are you today' },
+    ];
+
+    expect(mergeCuesToSentences(cues)).toEqual([
+      {
+        id: 0,
+        start: 0,
+        end: 4.5,
+        text: 'Hello there how are you today',
+        cueStart: 0,
+        cueEnd: 1,
+      },
+    ]);
+  });
+
+  it('splits ASR cues when the pause between them reaches 0.8s', () => {
+    const cues: Cue[] = [
+      { start: 0, end: 2, text: 'Hello there' },
+      { start: 3, end: 5, text: 'how are you today' },
+      { start: 6, end: 8, text: 'I am fine' },
+    ];
+
+    expect(mergeCuesToSentences(cues, { asr: true })).toEqual([
+      { id: 0, start: 0, end: 2, text: 'Hello there', cueStart: 0, cueEnd: 0 },
+      { id: 1, start: 3, end: 5, text: 'how are you today', cueStart: 1, cueEnd: 1 },
+      { id: 2, start: 6, end: 8, text: 'I am fine', cueStart: 2, cueEnd: 2 },
+    ]);
+  });
+
+  it('keeps ASR cues together below the pause threshold', () => {
+    const cues: Cue[] = [
+      { start: 0, end: 2, text: 'Hello there' },
+      { start: 2.5, end: 4, text: 'how are you today' },
+    ];
+
+    expect(mergeCuesToSentences(cues, { asr: true })).toEqual([
+      {
+        id: 0,
+        start: 0,
+        end: 4,
+        text: 'Hello there how are you today',
+        cueStart: 0,
+        cueEnd: 1,
+      },
+    ]);
+  });
+
+  it('still closes on punctuation before applying the ASR pause rule', () => {
+    const cues: Cue[] = [
+      { start: 0, end: 2, text: 'Hello there.' },
+      { start: 2.1, end: 3.1, text: 'how are you' },
+      { start: 3.2, end: 4.2, text: 'today.' },
+      { start: 5.5, end: 6.5, text: 'I am fine' },
+    ];
+
+    expect(mergeCuesToSentences(cues, { asr: true })).toEqual([
+      { id: 0, start: 0, end: 2, text: 'Hello there.', cueStart: 0, cueEnd: 0 },
+      { id: 1, start: 2.1, end: 4.2, text: 'how are you today.', cueStart: 1, cueEnd: 2 },
+      { id: 2, start: 5.5, end: 6.5, text: 'I am fine', cueStart: 3, cueEnd: 3 },
+    ]);
+  });
+
+  it('caps an ASR sentence at 20 words, splitting on a cue boundary', () => {
+    const cues: Cue[] = [
+      { start: 0, end: 1, text: 'one two three four five six seven' },
+      { start: 1, end: 2, text: 'eight nine ten eleven twelve thirteen fourteen' },
+      { start: 2, end: 3, text: 'fifteen sixteen seventeen eighteen nineteen twenty twentyone' },
+    ];
+
+    expect(mergeCuesToSentences(cues, { asr: true })).toEqual([
+      {
+        id: 0,
+        start: 0,
+        end: 2,
+        text: 'one two three four five six seven eight nine ten eleven twelve thirteen fourteen',
+        cueStart: 0,
+        cueEnd: 1,
+      },
+      {
+        id: 1,
+        start: 2,
+        end: 3,
+        text: 'fifteen sixteen seventeen eighteen nineteen twenty twentyone',
+        cueStart: 2,
+        cueEnd: 2,
+      },
+    ]);
+  });
+
+  it('honours custom ASR pause and word thresholds', () => {
+    const cues: Cue[] = [
+      { start: 0, end: 1, text: 'one two three four' },
+      { start: 1.5, end: 2.5, text: 'five six' },
+    ];
+
+    expect(
+      mergeCuesToSentences(cues, { asr: true, pauseSeconds: 0.4, maxWords: 2 }),
+    ).toHaveLength(2);
+    expect(
+      mergeCuesToSentences(cues, { asr: true, pauseSeconds: 0.6, maxWords: 99 }),
+    ).toEqual([
+      {
+        id: 0,
+        start: 0,
+        end: 2.5,
+        text: 'one two three four five six',
+        cueStart: 0,
+        cueEnd: 1,
+      },
+    ]);
   });
 });

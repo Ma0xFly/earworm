@@ -9,10 +9,12 @@
  * is re-fetched with `fmt=json3`, parsed into normalized `Cue[]`, and posted to
  * the isolated-world client over the validated window bridge.
  *
- * Earworm v1 accepts human English tracks only. When no usable capture shows
- * up, the fallback chain reads the player response's `captionTracks`, nudges the
- * player onto a manual English track, and only then reports a classified
- * failure (`no-captions` / `asr-only` / `nudge-failed` / `timeout` / `http`).
+ * Earworm v1 accepts English tracks with human captions preferred and
+ * YouTube's auto-generated (ASR) English track as the fallback. When no usable
+ * capture shows up, the fallback chain reads the player response's
+ * `captionTracks`, nudges the player onto the selected English track, and only
+ * then reports a classified failure (`no-captions` / `nudge-failed` /
+ * `timeout` / `http`).
  *
  * NEVER throw into the page and never block playback: every hook body and every
  * async continuation is wrapped, and the captured URL is only reused as-is
@@ -20,7 +22,7 @@
  */
 
 import { defineUnlistedScript } from 'wxt/utils/define-unlisted-script';
-import type { Cue, CueTrack } from '@/lib/contracts';
+import type { Cue, CueTrackKind } from '@/lib/contracts';
 import { PAGE_SELECTORS, PLAYER_DOM_ID } from '@/lib/ui/selectors';
 import {
   parseContentEvent,
@@ -36,11 +38,13 @@ import {
   classifyCapturedTrack,
   classifyHttpStatus,
   hasTlang,
+  isEnglishCapturedTrack,
   isShortsHref,
   isTimedtextUrl,
   normKey,
   selectEnglishTrack,
   stripTlang,
+  trackKindOf,
   trackLangOf,
   videoIdFromHref,
   vidOfUrl,
@@ -53,7 +57,7 @@ import {
 
 /** How long to wait for the player to fetch timedtext before falling back. */
 export const NOCUES_TIMEOUT_MS = 8000;
-/** How long the nudge (select manual track / click CC) may take to be sniffed. */
+/** How long the nudge (select the English track / click CC) may take to be sniffed. */
 export const NUDGE_GRACE_MS = 3000;
 /** Upper bound for one timedtext fetch; without it a hung fetch wedges state. */
 export const FETCH_TIMEOUT_MS = 8000;
@@ -141,7 +145,8 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
   const currentVid = (): string => videoIdFromHref(getHref());
 
   let currentVideoId = currentVid();
-  // Most recently captured manual-English source URL (freshest pot wins).
+  // Most recently captured accepted-English (manual or ASR) source URL
+  // (freshest pot wins).
   let sourceUrl = '';
   // The video that sourceUrl belongs to; a stale URL is never fetched/posted.
   let sourceVid = '';
@@ -427,7 +432,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
     if (!wanted || !sourceUrl) return;
     const videoId = currentVid();
     if (!videoId || sourceVid !== videoId) return;
-    if (classifyCapturedTrack(sourceUrl, getHref()) !== 'manual-en') return;
+    if (!isEnglishCapturedTrack(classifyCapturedTrack(sourceUrl, getHref()))) return;
     if (!force && producedForUrl === sourceUrl) return;
 
     producedForUrl = sourceUrl;
@@ -436,6 +441,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
     // reading it again after the await could pick a different token.
     const src = sourceUrl;
     const lang = trackLangOf(src, getHref());
+    const kind = trackKindOf(src, getHref());
     try {
       const json = await fetchJson3Retry(buildUrl(src, getHref()), videoId);
       // Three independent checks: capture-time filter, produce-start guard and
@@ -448,7 +454,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
         postFailed(videoId, 'no-captions');
         return;
       }
-      postCuesReady({ videoId, lang: lang || 'en', kind: 'manual', cues });
+      postCuesReady({ videoId, lang: lang || 'en', kind, cues });
     } catch (error) {
       if (videoId !== currentVid() || sourceVid !== currentVid()) return;
       // Allow a retry if the player rotates the pot / asks again later.
@@ -572,7 +578,11 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
     return cues;
   };
 
-  const finalizeScreenText = (videoId: string, failure: TranscriptFailureReason): void => {
+  const finalizeScreenText = (
+    videoId: string,
+    failure: TranscriptFailureReason,
+    kind: CueTrackKind,
+  ): void => {
     clearScreenTextTimers();
     // A real capture / navigation / teardown during the window wins.
     if (videoId !== currentVid() || !wanted || sourceUrl) {
@@ -585,7 +595,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
       postFailed(videoId, failure);
       return;
     }
-    postCuesReady({ videoId, lang: 'en', kind: 'manual', cues });
+    postCuesReady({ videoId, lang: 'en', kind, cues });
   };
 
   /**
@@ -596,12 +606,14 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
    * Limitations: only lines that are actually painted while the video plays
    * are captured, start times are sample wall-clock times (not true cue
    * starts), and a paused/blank caption window yields no text, in which case
-   * the original classified failure is posted. A real timedtext capture aborts
-   * the scrape.
+   * the original classified failure is posted. The synthesized cues carry the
+   * selected track's kind so ASR videos still use the ASR sentence rules. A
+   * real timedtext capture aborts the scrape.
    */
   const startScreenTextCapture = (
     videoId: string,
     failure: TranscriptFailureReason,
+    kind: CueTrackKind,
   ): void => {
     if (screenTimer !== null || screenDeadline !== null) return;
     if (videoId !== currentVid() || !wanted || sourceUrl) return;
@@ -629,12 +641,16 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
     sample();
     screenTimer = setInterval(sample, SCREEN_TEXT_SAMPLE_MS);
     screenDeadline = setTimeout(
-      () => finalizeScreenText(videoId, failure),
+      () => finalizeScreenText(videoId, failure, kind),
       SCREEN_TEXT_WINDOW_MS,
     );
   };
 
-  const scheduleGrace = (videoId: string, failure: TranscriptFailureReason): void => {
+  const scheduleGrace = (
+    videoId: string,
+    failure: TranscriptFailureReason,
+    kind: CueTrackKind = 'manual',
+  ): void => {
     clearGraceTimer();
     resetScreenTextCapture();
     graceTimer = setTimeout(() => {
@@ -643,7 +659,7 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
       if (sourceUrl) return; // a capture raced the grace window — all good
       // Best-effort: the player may still be painting captions even though we
       // could not sniff timedtext. Try the screen text before failing.
-      startScreenTextCapture(videoId, failure);
+      startScreenTextCapture(videoId, failure, kind);
     }, NUDGE_GRACE_MS);
   };
 
@@ -664,18 +680,16 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
         return;
       }
       const selection = selectEnglishTrack(tracks);
-      if (selection.kind === 'asr-only') {
-        // v1 does not consume auto-generated tracks (ADR-0001).
-        postFailed(videoId, 'asr-only');
-        return;
-      }
       if (selection.kind === 'no-captions') {
         postFailed(videoId, 'no-captions');
         return;
       }
+      // Manual is preferred; when only ASR English exists, nudge that exact
+      // track and let the screen-text fallback synthesize ASR-kind cues too.
+      const kind: CueTrackKind = selection.kind === 'asr-en' ? 'asr' : 'manual';
       nudgeCaptions(selection.track);
-      // A manual English track exists but the player still has not fetched it.
-      scheduleGrace(videoId, 'nudge-failed');
+      // A selected English track exists but the player still has not fetched it.
+      scheduleGrace(videoId, 'nudge-failed', kind);
     } catch {
       if (videoId !== currentVid() || !wanted) return;
       nudgeCaptions(null);
@@ -717,8 +731,9 @@ export function startInjectRuntime(deps: InjectRuntimeDeps = {}): () => void {
       if (vidOfUrl(rawUrl, pageHref) !== videoIdHere) return;
 
       const captured = classifyCapturedTrack(rawUrl, pageHref);
-      if (captured === 'asr') return; // human English only in v1
-      if (captured !== 'manual-en') return;
+      // Manual English preferred, ASR English accepted; every other capture
+      // (including non-English ASR) is ignored so we never produce wrong cues.
+      if (!isEnglishCapturedTrack(captured)) return;
 
       // When the player's selected track is an auto-translate one, every
       // request it makes carries tlang=; the URL minus tlang is still the

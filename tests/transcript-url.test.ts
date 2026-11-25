@@ -6,6 +6,7 @@ import {
   classifyCapturedTrack,
   classifyHttpStatus,
   hasTlang,
+  isEnglishCapturedTrack,
   isManualEnglishTrack,
   isTimedtextUrl,
   normKey,
@@ -112,10 +113,11 @@ describe('timedtext URL helpers', () => {
   });
 });
 
-describe('manual English track selection', () => {
+describe('English track selection', () => {
   const manualEn = { languageCode: 'en', kind: '' };
   const manualEnGb = { languageCode: 'en-GB' };
   const asrEn = { languageCode: 'en', kind: 'asr' };
+  const asrEnUs = { languageCode: 'en-US', kind: 'asr' };
   const manualEs = { languageCode: 'es' };
 
   it('accepts en and en-* tracks only when they are not ASR', () => {
@@ -132,8 +134,18 @@ describe('manual English track selection', () => {
     });
   });
 
-  it('reports asr-only when English exists only as auto-generated', () => {
-    expect(selectEnglishTrack([asrEn, manualEs])).toEqual({ kind: 'asr-only' });
+  it('falls back to the first ASR English track when no manual track exists', () => {
+    expect(selectEnglishTrack([asrEn, manualEs])).toEqual({ kind: 'asr-en', track: asrEn });
+    expect(selectEnglishTrack([manualEs, asrEnUs])).toEqual({ kind: 'asr-en', track: asrEnUs });
+  });
+
+  it('does not treat a non-English ASR track as an English fallback', () => {
+    expect(
+      selectEnglishTrack([
+        { languageCode: 'fr', kind: 'asr' },
+        manualEs,
+      ]),
+    ).toEqual({ kind: 'no-captions' });
   });
 
   it('reports no-captions for absent, empty and non-English track lists', () => {
@@ -158,10 +170,21 @@ describe('manual English track selection', () => {
     });
   });
 
-  it('classifies a captured URL into manual-en / asr / other', () => {
+  it('classifies a captured URL into manual-en / asr-en / asr-other / other', () => {
     expect(classifyCapturedTrack(CAPTURED)).toBe('manual-en');
-    expect(classifyCapturedTrack(CAPTURED.replace('kind=', 'kind=asr'))).toBe('asr');
+    expect(classifyCapturedTrack(CAPTURED.replace('kind=', 'kind=asr'))).toBe('asr-en');
+    // An ASR capture in another language must never be mistaken for English.
+    expect(
+      classifyCapturedTrack(CAPTURED.replace('lang=en', 'lang=fr').replace('kind=', 'kind=asr')),
+    ).toBe('asr-other');
     expect(classifyCapturedTrack(CAPTURED.replace('lang=en', 'lang=fr'))).toBe('other');
+  });
+
+  it('accepts both manual and ASR English captures, and only those', () => {
+    expect(isEnglishCapturedTrack('manual-en')).toBe(true);
+    expect(isEnglishCapturedTrack('asr-en')).toBe(true);
+    expect(isEnglishCapturedTrack('asr-other')).toBe(false);
+    expect(isEnglishCapturedTrack('other')).toBe(false);
   });
 });
 

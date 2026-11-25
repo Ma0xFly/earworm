@@ -71,7 +71,8 @@ describe('inject window bridge', () => {
       cues: [{ start: 0, end: 1.25, text: 'hello' }],
     };
     expect(isCuesReadyPayload(ready)).toBe(true);
-    expect(isCuesReadyPayload({ ...ready, kind: 'asr' })).toBe(false);
+    expect(isCuesReadyPayload({ ...ready, kind: 'asr' })).toBe(true);
+    expect(isCuesReadyPayload({ ...ready, kind: 'auto' })).toBe(false);
     expect(isCuesReadyPayload({ ...ready, cues: [{ start: 0, end: 1, text: 3 }] })).toBe(false);
     expect(isCuesReadyPayload({ ...ready, cues: [{ start: 0, end: Number.NaN, text: 'x' }] })).toBe(
       false,
@@ -79,6 +80,7 @@ describe('inject window bridge', () => {
     expect(isCuesReadyPayload({ ...ready, videoId: '' })).toBe(false);
 
     expect(isCuesFailedPayload({ videoId: 'vid', reason: 'timeout' })).toBe(true);
+    expect(isCuesFailedPayload({ videoId: 'vid', reason: 'asr-only' })).toBe(false);
     expect(isCuesFailedPayload({ videoId: 'vid', reason: 'rate-limited' })).toBe(false);
     expect(isProducePayload({ videoId: 'vid' })).toBe(true);
     expect(isProducePayload({ videoId: 'vid', force: true })).toBe(true);
