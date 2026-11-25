@@ -115,7 +115,20 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
 11. 剧场模式：右栏可用则插入其中（文档流），不可用则右侧抽屉。该模式不再单独触发
     任何特殊布局；宽/窄窗口的差异完全来自 YouTube 是否暴露可用的 `#secondary`。
 
-实际结果：____________________
+实际结果（2026-11-25，本机 Google Chrome 158.0.8127.36 + `.output/chrome-mv3`
+未打包扩展，真实 YouTube，窗口 1648×781）：
+TED `iG9CE55wbtY` 上 `earworm-sidebar-host` 是 `#secondary-inner` 首个子节点；
+面板 `data-mode=docked`、`position: static`，宽 445px（撑满右栏），高 437px
+（56vh，落在 320–560px 内）；列表 `overflow-y:auto`，clientHeight 398 /
+scrollHeight 12636。推荐区 `#panels` 顶边 603px，位于宿主底边 591px 之下；
+`scrollTo(0,0)` 时宿主 top 723px，`scrollTo(0,1092)` 后 -369px，随页面滚走。
+点「收起字幕侧栏」后宿主移除、主 shadow root 出现「字幕」重开按钮；点击后宿主
+重新成为首子节点，273 行恢复。播放到 3:00 时当前句为第 35 行（`aria-current`），
+列表 scrollTop 2231（内部滚动）；点击第 41 行后视频从 184.7s 跳到 208.0s，高亮同步到该行。
+全屏时宿主移除、面板转 `drawer` + `position:fixed`；
+退出全屏后重新 docked + static。剧场模式（`ytp-large-width-mode`）下 `#secondary`
+仍宽 582px，面板保持 docked。该浏览器未配置可用 LLM，中文列显示「翻译失败/重试」，
+英文逐句与侧栏布局不受影响。
 
 ### §7.2 a/s/d、连续播放、焦点让行
 
@@ -326,7 +339,12 @@ overlay 显示「字幕获取失败」并可点「重试」。
   存在，只是当时按 manual-only 范围决策被主动丢弃；后续恢复它是范围调整，不是
   修复「ASR 获取故障」。本次改动只处理人工 + ASR 并存时的优先级。
 
-实际结果：____________________
+实际结果（2026-11-25，同一台机器、未打包扩展、真实网络）：
+ASR-only `ZedAs9P7yE8` 上侧栏 docked、181 句；网络抓到
+`api/timedtext…kind=asr&lang=en&fmt=json3`；所有句 ≤20 词（ASR 硬上限生效）。
+人工 + ASR 并存的 TED `iG9CE55wbtY` 上 273 句、标点句正常，其中 42 句 >20 词，
+说明采用人工轨（ASR 会被 20 词上限切开），面板同样 docked。中文译文因该浏览器
+未配置可用 LLM 而失败，英文行正常；无英文轨视频本轮未找到候选，未实测。
 
 ## 4. 边界与回归抽查（建议）
 
@@ -335,8 +353,8 @@ overlay 显示「字幕获取失败」并可点「重试」。
 | YouTube SPA：首页 → 视频 → 另一个视频 | 旧字幕不残留；新视频重新载入；无重复 overlay；侧栏宿主重插新 `#secondary-inner` 首位 | ______ |
 | 右栏整体重建（推荐视频刷新） | `earworm-sidebar-host` 仍在当前列首位，推荐视频在面板下方，不出现重复面板 | ______ |
 | 关闭再打开侧栏 | 开关状态持久化；宿主移除后推荐视频上移；重开后列表恢复 | ______ |
-| 剧场模式 | 不再特殊处理：右栏可用则插入其中（文档流），不可用则右侧抽屉 | ______ |
-| 进入 / 退出全屏 | 进入全屏转右侧抽屉并移走嵌套宿主；退出后回到右栏文档流 | ______ |
+| 剧场模式 | 不再特殊处理：右栏可用则插入其中（文档流），不可用则右侧抽屉 | 1648×781 下 `#secondary` 宽 582px，面板保持 docked；窄窗口右栏隐藏时转抽屉未实测（happy-dom 已覆盖） |
+| 进入 / 退出全屏 | 进入全屏转右侧抽屉并移走嵌套宿主；退出后回到右栏文档流 | 进入全屏宿主移除、面板 `drawer` + fixed；退出后重新成为 `#secondary-inner` 首子节点、`docked` + static |
 | 扩展重新加载（chrome://extensions） | 页面需刷新；刷新后正常挂载，无重复 shadow root | ______ |
 | 视频无中文译文（LLM 失败） | 英文仍显示；失败句可单句重试；其余句不受影响 | ______ |
 | Shorts（可选） | overlay 在 18% 底部锚点，不被右侧按钮遮挡；退出 Shorts 恢复普通锚点 | ______ |
