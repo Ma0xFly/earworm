@@ -40,9 +40,18 @@ export function LlmSettingsCard({
   const modelDescribedBy = errors.model ? 'llm-model-help llm-model-error' : 'llm-model-help';
 
   return (
-    <Card className="border-border">
+    <Card
+      role="region"
+      aria-labelledby="llm-card-title"
+      className="rounded-[14px] border-border"
+    >
       <CardHeader>
-        <CardTitle role="heading" aria-level={2}>
+        <CardTitle
+          id="llm-card-title"
+          role="heading"
+          aria-level={2}
+          className="text-base font-semibold"
+        >
           LLM 连接
         </CardTitle>
         <CardDescription>
@@ -52,7 +61,7 @@ export function LlmSettingsCard({
 
       <CardContent className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="llm-base-url">Base URL</Label>
+          <Label htmlFor="llm-base-url" className="text-[13px]">Base URL</Label>
           <Input
             id="llm-base-url"
             name="baseUrl"
@@ -78,7 +87,7 @@ export function LlmSettingsCard({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="llm-api-key">API Key</Label>
+          <Label htmlFor="llm-api-key" className="text-[13px]">API Key</Label>
           <div className="flex items-start gap-2">
             <Input
               id="llm-api-key"
@@ -109,7 +118,7 @@ export function LlmSettingsCard({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="llm-model">模型</Label>
+          <Label htmlFor="llm-model" className="text-[13px]">模型</Label>
           <Input
             id="llm-model"
             name="model"

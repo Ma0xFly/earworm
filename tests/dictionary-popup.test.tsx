@@ -139,6 +139,34 @@ describe('dictionary popup content', () => {
     // Purple means collocation only: exam tags stay neutral pills.
     expect(tags[0]?.className).toContain('bg-secondary');
     expect(tags[0]?.className).not.toMatch(/collocation|violet|purple|amber/);
+
+    // Part of speech is a neutral 11px/600 pill too, not italic body text.
+    const pos = document.querySelector('[data-ew-dict-pos]');
+    expect(pos?.className).toContain('text-[11px]');
+    expect(pos?.className).toContain('font-semibold');
+    expect(pos?.className).toContain('bg-secondary');
+    expect(pos?.className).toContain('rounded-full');
+    expect(pos?.className).not.toMatch(/italic|text-\[13px\]|collocation|violet|purple|amber/);
+  });
+
+  it('renders headword, phonetic and senses at the v1.1 type scale', async () => {
+    sessionMock.api = makeSession([makeSentence(0, 'I was running fast.')]);
+    renderPopup();
+    fireEvent.click(addWord('running', 6));
+
+    await waitFor(() => {
+      expect(document.querySelector('[data-ew-dict-headword]')).toHaveTextContent('run');
+    });
+
+    // headword 22px/700, phonetic 13px, senses 14px/1.6.
+    const headword = document.querySelector('[data-ew-dict-headword]');
+    expect(headword?.className).toContain('text-[22px]');
+    expect(headword?.className).toContain('font-bold');
+    const phonetic = document.querySelector('[data-ew-dict-phonetic]');
+    expect(phonetic?.parentElement?.className).toContain('text-[13px]');
+    const senses = document.querySelector('[data-ew-dict-translation]');
+    expect(senses?.className).toContain('text-sm');
+    expect(senses?.className).toContain('leading-[1.6]');
   });
 });
 
@@ -204,6 +232,27 @@ describe('dictionary popup collocations', () => {
     );
   });
 
+  it('pins a 13px violet collocation card above the entry', async () => {
+    sessionMock.api = makeSession([makeSentence(0, 'I need to hold up.', [offlineHold])]);
+    renderPopup();
+    fireEvent.click(addWord('hold', 10));
+
+    await waitFor(() => {
+      expect(document.querySelector('[data-ew-dict-headword]')).toHaveTextContent('hold');
+    });
+
+    const card = document.querySelector('[data-ew-dict-collocation]');
+    expect(card?.nextElementSibling).toContainElement(
+      document.querySelector('[data-ew-dict-headword]') as HTMLElement,
+    );
+    const phrase = document.querySelector('[data-ew-dict-phrase]');
+    expect(phrase?.className).toContain('text-[13px]');
+    expect(phrase?.className).toContain('text-collocation');
+    const note = document.querySelector('[data-ew-dict-note]');
+    expect(note?.className).toContain('text-[13px]');
+    expect(note?.className).toContain('text-collocation');
+  });
+
   it('uses an opaque dark surface with a violet border for the popup', async () => {
     sessionMock.api = makeSession([makeSentence(0, 'I was running fast.')]);
     renderPopup();
@@ -211,8 +260,13 @@ describe('dictionary popup collocations', () => {
 
     const popup = popupRoot();
     expect(popup).not.toBeNull();
+    // The surface is dark by construction: the popup carries `.dark` itself,
+    // so `bg-popover` resolves to the dark card token on any video frame,
+    // whether or not an ancestor portal carries the class.
+    expect(popup?.className).toContain('dark');
     expect(popup?.className).toContain('bg-popover');
     expect(popup?.className).toContain('border-violet-6');
+    expect(popup?.className).toContain('rounded-lg');
     expect(popup?.className).not.toMatch(/bg-(white|black| amber)/);
   });
 

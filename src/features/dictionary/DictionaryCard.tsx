@@ -35,8 +35,8 @@ function displayPhonetic(phonetic: string | undefined): string | null {
   return `/${clean}/`;
 }
 
-/** Exam tags are deliberately neutral: purple is reserved for collocations. */
-const TAG_CLASS =
+/** Part of speech and exam tags share a neutral 11px/600 pill: purple is reserved for collocations. */
+const NEUTRAL_PILL_CLASS =
   'inline-flex items-center rounded-full border border-border bg-secondary px-1.5 py-0.5 text-[11px] font-semibold leading-none text-secondary-foreground';
 
 function CollocationCard({ span }: { span: CollocationSpan }) {
@@ -95,7 +95,7 @@ function EntryDetails({ entry }: { entry: WordEntry }) {
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground">
           {phonetic ? <span data-ew-dict-phonetic>{phonetic}</span> : null}
           {entry.pos ? (
-            <span data-ew-dict-pos className="italic">
+            <span data-ew-dict-pos className={NEUTRAL_PILL_CLASS}>
               {entry.pos}
             </span>
           ) : null}
@@ -105,7 +105,7 @@ function EntryDetails({ entry }: { entry: WordEntry }) {
       {entry.tags.length > 0 ? (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {entry.tags.map((tag) => (
-            <span key={tag} data-ew-dict-tag="" data-tag={tag} className={TAG_CLASS}>
+            <span key={tag} data-ew-dict-tag="" data-tag={tag} className={NEUTRAL_PILL_CLASS}>
               {examTagLabel(tag)}
             </span>
           ))}
