@@ -43,3 +43,7 @@ _Avoid_: 官方字幕（歧义：自动字幕也是 YouTube 官方提供）
 **自动字幕 (ASR Track)**:
 YouTube 语音识别自动生成的英文字幕轨（kind=asr），无人工轨时的兜底来源，与 Language Reactor 同源。
 _Avoid_: 机字幕、非官方字幕
+
+**快捷开关 (Quick Toggle)**:
+镶嵌在播放器控制栏的总开关及其快捷菜单；菜单承载模糊开关、字幕导出、设置入口与翻译状态。
+_Avoid_: 工具条、浮动按钮
