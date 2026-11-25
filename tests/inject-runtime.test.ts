@@ -192,13 +192,36 @@ describe('MAIN-world inject runtime', () => {
     expect(requested.searchParams.get('signature')).toBe('SIG2');
   });
 
-  it('ignores ASR, non-English and other-video captures', async () => {
+  it('captures the player ASR English track and posts it with kind asr', async () => {
+    const fetchImpl = vi.fn(async () => response(englishJson));
+    start(fetchImpl);
+
+    produce('vid1');
+    await window.fetch(captured('vid1', 'lang=en&kind=asr&pot=POT-ASR&signature=SIG-ASR'));
+    await flush();
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const requested = new URL(String((fetchImpl.mock.calls[0] as unknown[] | undefined)?.[0]));
+    expect(requested.searchParams.get('kind')).toBe('asr');
+    expect(requested.searchParams.get('pot')).toBe('POT-ASR');
+    expect(requested.searchParams.get('fmt')).toBe('json3');
+
+    expect(posted()).toContainEqual({
+      __earworm: true,
+      dir: 'inject-to-content',
+      type: INJECT_MESSAGE.cuesReady,
+      payload: { videoId: 'vid1', lang: 'en', kind: 'asr', cues: expectedCues },
+    });
+  });
+
+  it('ignores non-English and other-video captures', async () => {
     const fetchImpl = vi.fn(async () => response(englishJson));
     start(fetchImpl);
     produce('vid1');
 
-    await window.fetch(captured('vid1', 'lang=en&kind=asr&pot=POT1'));
+    // A manual or ASR track in another language is never an English track.
     await window.fetch(captured('vid1', 'lang=fr&kind=&pot=POT1'));
+    await window.fetch(captured('vid1', 'lang=fr&kind=asr&pot=POT1'));
     await window.fetch(captured('vid2', 'lang=en&kind=&pot=POT1'));
     await flush();
 
@@ -206,15 +229,28 @@ describe('MAIN-world inject runtime', () => {
     expect(posted()).toHaveLength(0);
   });
 
-  it('reports asr-only after the 8s sniff window when only ASR English exists', async () => {
+  it('nudges the ASR English track when the video has no manual track', async () => {
     const fetchImpl = vi.fn(async () => response(englishJson));
-    start(fetchImpl, { tracks: [{ languageCode: 'en', kind: 'asr' }] });
+    start(fetchImpl, {
+      tracks: [{ languageCode: 'en', kind: 'asr', vssId: 'a.en' }],
+    });
 
     produce('vid1');
     await vi.advanceTimersByTimeAsync(8000);
+    expect(player.loadModule).toHaveBeenCalledWith('captions');
 
+    await vi.advanceTimersByTimeAsync(300);
+    // The descriptor keeps kind/vssId so the player selects the ASR track
+    // rather than leaving captions off or picking another language.
+    expect(player.setOption).toHaveBeenCalledWith('captions', 'track', {
+      languageCode: 'en',
+      kind: 'asr',
+      vssId: 'a.en',
+    });
+
+    await vi.advanceTimersByTimeAsync(3000 + SCREEN_TEXT_WINDOW_MS);
+    expect(postedFailure()).toBe('nudge-failed');
     expect(fetchImpl).not.toHaveBeenCalled();
-    expect(postedFailure()).toBe('asr-only');
   });
 
   it('reports no-captions when the player response lists no English track', async () => {
@@ -274,6 +310,40 @@ describe('MAIN-world inject runtime', () => {
       videoId: 'vid1',
       lang: 'en',
       kind: 'manual',
+      cues: [
+        { start: 10.5, end: 13, text: 'Hello there.' },
+        { start: 13, end: 15, text: 'Second line.' },
+      ],
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('marks synthesized screen-text cues as ASR when the nudge chose an ASR track', async () => {
+    const fetchImpl = vi.fn(async () => response(englishJson));
+    const captions: Array<{ textContent: string }> = [];
+    let time = 10;
+    start(fetchImpl, {
+      tracks: [{ languageCode: 'en', kind: 'asr' }],
+      page: { captions: () => captions, time: () => time },
+    });
+
+    produce('vid1');
+    await vi.advanceTimersByTimeAsync(8000 + 300 + 3000);
+
+    captions.push({ textContent: 'Hello there.' });
+    time = 10.5;
+    await vi.advanceTimersByTimeAsync(250);
+    captions[0] = { textContent: 'Second line.' };
+    time = 13;
+    await vi.advanceTimersByTimeAsync(250);
+    captions.length = 0;
+    await vi.advanceTimersByTimeAsync(SCREEN_TEXT_WINDOW_MS);
+
+    const ready = posted().find((message) => message.type === INJECT_MESSAGE.cuesReady);
+    expect(ready?.payload).toEqual({
+      videoId: 'vid1',
+      lang: 'en',
+      kind: 'asr',
       cues: [
         { start: 10.5, end: 13, text: 'Hello there.' },
         { start: 13, end: 15, text: 'Second line.' },
@@ -420,7 +490,7 @@ describe('MAIN-world inject runtime', () => {
     expect(postedFailure()).toBe('nudge-failed');
   });
 
-  it('classifies asr-only from the innertube player response too', async () => {
+  it('nudges the ASR track learned from the innertube player response', async () => {
     (window as Window & { ytcfg?: unknown }).ytcfg = {
       get: (key: string) => {
         if (key === 'INNERTUBE_API_KEY') return 'KEY';
@@ -437,7 +507,13 @@ describe('MAIN-world inject runtime', () => {
     await vi.advanceTimersByTimeAsync(8000);
     await flush();
 
-    expect(postedFailure()).toBe('asr-only');
-    expect(player.loadModule).not.toHaveBeenCalled();
+    expect(player.loadModule).toHaveBeenCalledWith('captions');
+    await vi.advanceTimersByTimeAsync(300);
+    expect(player.setOption).toHaveBeenCalledWith('captions', 'track', {
+      languageCode: 'en',
+      kind: 'asr',
+    });
+    await vi.advanceTimersByTimeAsync(3000 + SCREEN_TEXT_WINDOW_MS);
+    expect(postedFailure()).toBe('nudge-failed');
   });
 });
