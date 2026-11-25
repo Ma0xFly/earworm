@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { DEFAULT_SETTINGS } from '@/lib/contracts';
 import { SETTINGS_STORAGE_KEY } from '@/lib/settings';
 import { OptionsApp } from '@/features/options';
@@ -269,5 +269,57 @@ describe('OptionsApp save and permission flow', () => {
       'false',
     );
     expect(readStorage(SETTINGS_STORAGE_KEY)).toBeUndefined();
+  });
+});
+
+describe('OptionsApp layout (B · Trancy Glass)', () => {
+  it('groups the two settings cards as named regions in one centered column', async () => {
+    await renderOptions();
+
+    const llmCard = screen.getByRole('region', { name: 'LLM 连接' });
+    const defaultsCard = screen.getByRole('region', { name: '字幕与播放默认态' });
+    expect(llmCard).toBeInTheDocument();
+    expect(defaultsCard).toBeInTheDocument();
+
+    const column = llmCard.parentElement;
+    expect(column).toBe(defaultsCard.parentElement);
+    expect(column).toHaveClass('max-w-2xl');
+    expect(column).toHaveClass('gap-4');
+    expect(llmCard).toHaveClass('rounded-[14px]');
+    expect(defaultsCard).toHaveClass('rounded-[14px]');
+  });
+
+  it('uses the spec type scale for card titles, field labels and helper text', async () => {
+    await renderOptions();
+
+    const llmCard = screen.getByRole('region', { name: 'LLM 连接' });
+    const llmTitle = within(llmCard).getByRole('heading', { level: 2, name: 'LLM 连接' });
+    expect(llmTitle).toHaveClass('text-base');
+    expect(llmTitle).toHaveClass('font-semibold');
+
+    const defaultsCard = screen.getByRole('region', { name: '字幕与播放默认态' });
+    const defaultsTitle = within(defaultsCard).getByRole('heading', {
+      level: 2,
+      name: '字幕与播放默认态',
+    });
+    expect(defaultsTitle).toHaveClass('text-base');
+
+    expect(screen.getByText('Base URL')).toHaveClass('text-[13px]');
+    expect(screen.getByText('API Key')).toHaveClass('text-[13px]');
+    expect(screen.getByText('模型')).toHaveClass('text-[13px]');
+    expect(screen.getByText('模糊英文字幕')).toHaveClass('text-[13px]');
+
+    expect(screen.getByText(/默认 http:\/\/127\.0\.0\.1:3425\/v1/)).toHaveClass('text-xs');
+  });
+
+  it('renders connection success feedback with a dark-theme-aware color', async () => {
+    await renderOptions();
+    mockSendMessage(async () => ({ ok: true, sample: '你好' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '测试连接' }));
+
+    const success = await screen.findByRole('status');
+    expect(success).toHaveTextContent('连接成功');
+    expect(success).toHaveClass('dark:text-emerald-400');
   });
 });
