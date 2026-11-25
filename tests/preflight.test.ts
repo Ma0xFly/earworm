@@ -20,7 +20,9 @@ describe('shadow-root stylesheet', () => {
   it('compiles the utilities used by the app shell', () => {
     expect(cssText).toContain('.pointer-events-none');
     expect(cssText).toContain('.fixed');
-    expect(cssText).toContain('.z-\\[65\\]');
+    // The floating blur pill's `z-[65]` was removed with v1.1's quick menu;
+    // the menu surface (popover) now supplies `z-50`.
+    expect(cssText).toContain('.z-50');
   });
 
   it('contains no Tailwind preflight reset', () => {

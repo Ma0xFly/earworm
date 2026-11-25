@@ -15,11 +15,13 @@ import { startPlayerControllerSync } from './attach';
 import { playerController } from './controller';
 import { handleShortcutKey } from './keyboard';
 
-export function PlaybackShortcuts(): null {
+export function PlaybackShortcuts({ enabled = true }: { enabled?: boolean } = {}): null {
   const session = useSession();
   const latestSession = useRef(session);
+  const latestEnabled = useRef(enabled);
   useEffect(() => {
     latestSession.current = session;
+    latestEnabled.current = enabled;
   });
 
   // Attach/detach the controller with the content-script lifecycle and follow
@@ -34,6 +36,7 @@ export function PlaybackShortcuts(): null {
         currentIndex: current.state.currentIndex,
         time: playerController.getTime(),
         seekToSentence: current.seekToSentence,
+        enabled: latestEnabled.current,
       });
     };
 

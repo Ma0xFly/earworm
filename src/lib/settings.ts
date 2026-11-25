@@ -70,6 +70,7 @@ export function normalizeSettings(raw: unknown): Settings {
       continuous: asBoolean(playback.continuous, DEFAULT_SETTINGS.playback.continuous),
     },
     ui: {
+      enabled: asBoolean(ui.enabled, DEFAULT_SETTINGS.ui.enabled),
       sidebar: asBoolean(ui.sidebar, DEFAULT_SETTINGS.ui.sidebar),
     },
   };
