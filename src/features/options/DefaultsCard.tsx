@@ -36,7 +36,7 @@ function SwitchRow({
   return (
     <div className="flex items-start justify-between gap-6 py-4 first:pt-0 last:pb-0">
       <div className="flex flex-col gap-1">
-        <Label htmlFor={id}>{label}</Label>
+        <Label htmlFor={id} className="text-[13px]">{label}</Label>
         <p id={`${id}-description`} className="m-0 text-xs text-muted-foreground">
           {description}
         </p>
@@ -61,9 +61,18 @@ export function DefaultsCard({
   onContinuousChange,
 }: DefaultsCardProps) {
   return (
-    <Card className="border-border">
+    <Card
+      role="region"
+      aria-labelledby="defaults-card-title"
+      className="rounded-[14px] border-border"
+    >
       <CardHeader>
-        <CardTitle role="heading" aria-level={2}>
+        <CardTitle
+          id="defaults-card-title"
+          role="heading"
+          aria-level={2}
+          className="text-base font-semibold"
+        >
           字幕与播放默认态
         </CardTitle>
         <CardDescription>

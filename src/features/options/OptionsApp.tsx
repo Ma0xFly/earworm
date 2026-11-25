@@ -184,13 +184,18 @@ export function OptionsApp() {
   };
 
   return (
-    <main className="earworm-options min-h-screen bg-muted/30 py-10">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 sm:px-6">
-        <header className="flex flex-col gap-2">
+    <main className="earworm-options min-h-screen bg-muted/30 py-12">
+      <form
+        className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-12 sm:px-6"
+        aria-labelledby="options-title"
+        noValidate
+        onSubmit={onSubmit}
+      >
+        <header className="flex flex-col gap-3 pb-2">
           <img
             src={chrome.runtime.getURL('brand/earworm-logo-full.png')}
             alt="Earworm"
-            className="h-auto w-24"
+            className="h-auto w-28"
           />
           <h1 id="options-title" className="m-0 text-2xl font-semibold tracking-tight">
             Earworm 设置
@@ -205,12 +210,7 @@ export function OptionsApp() {
             正在加载设置…
           </p>
         ) : (
-          <form
-            className="flex flex-col gap-6"
-            aria-labelledby="options-title"
-            noValidate
-            onSubmit={onSubmit}
-          >
+          <>
             <LlmSettingsCard
               values={draft.llm}
               errors={errors}
@@ -229,7 +229,7 @@ export function OptionsApp() {
               onContinuousChange={updateContinuous}
             />
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <Button type="submit" disabled={saving}>
                 {saving ? '保存中…' : '保存设置'}
               </Button>
@@ -245,9 +245,9 @@ export function OptionsApp() {
             </div>
 
             <FeedbackMessage feedback={saveFeedback} />
-          </form>
+          </>
         )}
-      </div>
+      </form>
     </main>
   );
 }
