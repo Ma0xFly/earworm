@@ -19,7 +19,7 @@ describe('shadow-root stylesheet', () => {
   it('compiles the utilities used by the app shell', () => {
     expect(cssText).toContain('.pointer-events-none');
     expect(cssText).toContain('.fixed');
-    expect(cssText).toContain('.z-\\[70\\]');
+    expect(cssText).toContain('.z-\\[65\\]');
   });
 
   it('contains no Tailwind preflight reset', () => {
