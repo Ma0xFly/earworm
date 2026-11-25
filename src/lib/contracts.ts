@@ -63,8 +63,12 @@ export type Settings = {
   blur: { en: boolean; zh: boolean };
   /** false = auto-pause at sentence end. */
   playback: { continuous: boolean };
-  /** default true. */
-  ui: { sidebar: boolean };
+  ui: {
+    /** Global master switch: false restores native captions and yields shortcuts. */
+    enabled: boolean;
+    /** default true. */
+    sidebar: boolean;
+  };
 };
 
 /** Default LLM endpoint: local magpie gateway, group/free-ds model. */
@@ -77,7 +81,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   blur: { en: false, zh: false },
   playback: { continuous: false },
-  ui: { sidebar: true },
+  ui: { enabled: true, sidebar: true },
 };
 
 export type LlmCollocation = { text: string; note?: string };

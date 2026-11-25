@@ -6,6 +6,7 @@ import {
   PLAYER_DOM_ID,
   findCaptionElements,
   findPlayerElement,
+  findSubtitlesButton,
   firstMatch,
 } from '@/lib/ui/selectors';
 
@@ -34,6 +35,7 @@ describe('page selector map', () => {
     expect(PAGE_SELECTORS.html5VideoPlayer).toBe('.html5-video-player');
     expect(PAGE_SELECTORS.video).toBe('video');
     expect(PAGE_SELECTORS.controlBar).toBe('.ytp-chrome-bottom');
+    expect(PAGE_SELECTORS.controlButtons).toBe('.ytp-right-controls');
     expect(PAGE_SELECTORS.subtitlesButton).toBe('.ytp-subtitles-button');
     expect(PAGE_SELECTORS.secondary).toBe('#secondary');
     expect(PAGE_SELECTORS.secondaryInner).toBe('#secondary-inner');
@@ -61,6 +63,15 @@ describe('selector lookup helpers', () => {
 
     const movie = append('div', { id: 'movie_player' });
     expect(findPlayerElement(document)).toBe(movie);
+  });
+
+  it('finds the CC button used as the quick-toggle anchor', () => {
+    expect(findSubtitlesButton(document)).toBeNull();
+    const bar = append('div', { class: 'ytp-chrome-bottom' });
+    const cc = document.createElement('button');
+    cc.className = 'ytp-subtitles-button';
+    bar.appendChild(cc);
+    expect(findSubtitlesButton(document)).toBe(cc);
   });
 
   it('finds every caption layer node', () => {

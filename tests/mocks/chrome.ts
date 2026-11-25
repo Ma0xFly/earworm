@@ -89,6 +89,7 @@ export const chromeMock = {
     lastError: undefined as chrome.runtime.LastError | undefined,
     getURL: (path: string) => `chrome-extension://earworm-test/${path.replace(/^\//, '')}`,
     sendMessage: async (_message: unknown) => undefined,
+    openOptionsPage: vi.fn(async () => undefined),
     onMessage: {
       addListener: vi.fn(),
       removeListener: vi.fn(),
@@ -116,6 +117,7 @@ export function resetChromeMock(): void {
   changeListeners.clear();
   chromeMock.runtime.lastError = undefined;
   chromeMock.runtime.sendMessage = async () => undefined;
+  chromeMock.runtime.openOptionsPage.mockClear();
 }
 
 /** Seed `chrome.storage.local` without firing change events. */
