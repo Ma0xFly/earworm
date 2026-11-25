@@ -201,12 +201,12 @@ export function selectEnglishTrack(
   let asrEnglish: CaptionTrack | null = null;
   for (const track of tracks) {
     if (!track || typeof track !== 'object') continue;
-    if (baseLang(track.languageCode) !== 'en') continue;
-    if (track.kind === 'asr') {
+    // One predicate for "English and human"; the ASR fallback is the only
+    // remaining case that needs the kind/language pair.
+    if (isManualEnglishTrack(track)) return { kind: 'manual-en', track };
+    if (baseLang(track.languageCode) === 'en' && track.kind === 'asr') {
       asrEnglish ??= track;
-      continue;
     }
-    return { kind: 'manual-en', track };
   }
   return asrEnglish ? { kind: 'asr-en', track: asrEnglish } : { kind: 'no-captions' };
 }
