@@ -45,6 +45,7 @@ import {
   unmountContentApp,
   type MountedContentApp,
 } from '@/features/app/boot';
+import { SIDEBAR_HOST_TAG } from '@/features/sidebar/host';
 import { seedStorage } from './mocks/chrome';
 import { FakeVideo } from './mocks/video';
 
@@ -171,7 +172,7 @@ let mounted: MountedContentApp | null = null;
 
 /** The document-flow host inserted into the recommended-videos column. */
 function sidebarHost(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('earworm-sidebar-host');
+  return document.querySelector<HTMLElement>(SIDEBAR_HOST_TAG);
 }
 
 /**

@@ -6,6 +6,7 @@ import { SETTINGS_STORAGE_KEY, SettingsProvider } from '@/lib/settings';
 import { seedStorage } from '../../../tests/mocks/chrome';
 import type { SessionApi, SessionState } from '@/features/session';
 import { Sidebar } from './Sidebar';
+import { SIDEBAR_HOST_TAG } from './host';
 
 /**
  * The sidebar consumes the session and settings context from the shared
@@ -80,7 +81,7 @@ async function renderSidebar(api: SessionApi) {
 
 /** The document-flow host inserted into the recommended-videos column. */
 function sidebarHost(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('earworm-sidebar-host');
+  return document.querySelector<HTMLElement>(SIDEBAR_HOST_TAG);
 }
 
 function shadowQuery<T extends Element>(selector: string): T | null {
