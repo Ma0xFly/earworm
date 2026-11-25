@@ -3,27 +3,80 @@
 @import "../content/style.css";
 
 /* The content stylesheet declares its design tokens on `:host` (shadow root).
- * A standalone extension page has no shadow host, so mirror them on `:root`. */
+ * A standalone extension page has no shadow host, so mirror them on `:root`.
+ * Options follows the OS theme: `main.tsx` toggles `.dark` from matchMedia,
+ * and these tokens cover the same states before/without that class. */
 :root {
-  --ew-background: oklch(1 0 0);
-  --ew-foreground: oklch(0.145 0 0);
-  --ew-card: oklch(1 0 0);
-  --ew-card-foreground: oklch(0.145 0 0);
-  --ew-popover: oklch(1 0 0);
-  --ew-popover-foreground: oklch(0.145 0 0);
-  --ew-primary: oklch(0.205 0 0);
-  --ew-primary-foreground: oklch(0.985 0 0);
-  --ew-secondary: oklch(0.97 0 0);
-  --ew-secondary-foreground: oklch(0.205 0 0);
-  --ew-muted: oklch(0.97 0 0);
-  --ew-muted-foreground: oklch(0.556 0 0);
-  --ew-accent: oklch(0.97 0 0);
-  --ew-accent-foreground: oklch(0.205 0 0);
-  --ew-destructive: oklch(0.577 0.245 27.325);
-  --ew-border: oklch(0.922 0 0);
-  --ew-input: oklch(0.922 0 0);
-  --ew-ring: oklch(0.708 0 0);
+  --ew-violet-1: #FDFCFE;
+  --ew-violet-2: #FAF8FF;
+  --ew-violet-3: #F4F0FE;
+  --ew-violet-4: #EBE4FF;
+  --ew-violet-5: #E1D9FF;
+  --ew-violet-6: #D4CAFE;
+  --ew-violet-7: #C2B5F5;
+  --ew-violet-8: #AA99EC;
+  --ew-violet-9: #6E56CF;
+  --ew-violet-10: #654DC4;
+  --ew-violet-11: #6550B9;
+  --ew-violet-12: #2F265F;
+
+  --ew-background: #FDFCFE;
+  --ew-foreground: #2F265F;
+  --ew-card: #FFFFFF;
+  --ew-card-foreground: #2F265F;
+  --ew-popover: #FFFFFF;
+  --ew-popover-foreground: #2F265F;
+  --ew-primary: #6E56CF;
+  --ew-primary-foreground: #FFFFFF;
+  --ew-secondary: #FAF8FF;
+  --ew-secondary-foreground: #2F265F;
+  --ew-muted: #F4F0FE;
+  --ew-muted-foreground: #6E6886;
+  --ew-accent: #F4F0FE;
+  --ew-accent-foreground: #2F265F;
+  --ew-destructive: #C4323F;
+  --ew-border: #D4CAFE;
+  --ew-input: #D4CAFE;
+  --ew-ring: #AA99EC;
+  --ew-collocation: #6550B9;
   --ew-radius: 0.625rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ew-violet-1: #14121F;
+    --ew-violet-2: #1B1525;
+    --ew-violet-3: #291F43;
+    --ew-violet-4: #33255B;
+    --ew-violet-5: #3C2E69;
+    --ew-violet-6: #473876;
+    --ew-violet-7: #56468B;
+    --ew-violet-8: #6958AD;
+    --ew-violet-9: #6E56CF;
+    --ew-violet-10: #7D66D9;
+    --ew-violet-11: #BAA7FF;
+    --ew-violet-12: #E2DDFE;
+
+    --ew-background: #14121F;
+    --ew-foreground: #E2DDFE;
+    --ew-card: #1B1525;
+    --ew-card-foreground: #E2DDFE;
+    --ew-popover: #1B1525;
+    --ew-popover-foreground: #E2DDFE;
+    --ew-primary: #6E56CF;
+    --ew-primary-foreground: #FFFFFF;
+    --ew-secondary: #33255B;
+    --ew-secondary-foreground: #E2DDFE;
+    --ew-muted: #33255B;
+    --ew-muted-foreground: #A9A1C2;
+    --ew-accent: #33255B;
+    --ew-accent-foreground: #E2DDFE;
+    --ew-destructive: #F0626E;
+    --ew-border: #473876;
+    --ew-input: #473876;
+    --ew-ring: #6958AD;
+    --ew-collocation: #BAA7FF;
+  }
 }
 
 html,

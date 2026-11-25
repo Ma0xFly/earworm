@@ -80,14 +80,19 @@ export function createShadowUi(options: ShadowUiOptions): ShadowUi {
   styleElement.textContent = options.css;
   shadow.appendChild(styleElement);
 
+  // The overlay always uses the forced-dark Reactor Violet surface. Both
+  // shadow-root containers carry `.dark`: the React root owns the overlay, and
+  // the portal owns the dictionary popup (a sibling, not a descendant).
   const container = document.createElement('div');
   container.setAttribute('data-earworm-container', '');
+  container.classList.add('dark');
   container.style.cssText =
     'position:absolute; inset:0; display:block; pointer-events:none; overflow:visible;';
   shadow.appendChild(container);
 
   const portalContainer = document.createElement('div');
   portalContainer.setAttribute('data-earworm-portal', '');
+  portalContainer.classList.add('dark');
   portalContainer.style.cssText =
     'position:absolute; inset:0; display:block; pointer-events:none; overflow:visible;';
   shadow.appendChild(portalContainer);

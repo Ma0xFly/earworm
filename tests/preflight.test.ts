@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createShadowUi } from '@/lib/ui/shadow';
 import cssText from '@/entrypoints/content/style.css?inline';
 import cssSource from '@/entrypoints/content/style.css?raw';
+import optionsCssSource from '@/entrypoints/options/style.css?raw';
 
 /**
  * Compile-time proof for the highest-risk styling decisions:
@@ -38,6 +39,43 @@ describe('shadow-root stylesheet', () => {
 
   it('does not contain host-page caption selectors (those live in page-style.ts)', () => {
     expect(cssText).not.toContain('.ytp-caption-window-container');
+  });
+
+  it('ships the full Reactor Violet palette in light and dark', () => {
+    const css = cssText.toLowerCase();
+
+    // Spec §3 key steps: violet1 background, violet3/4 accent, violet6 border,
+    // violet8 ring, violet9 primary, violet11 collocation, violet12 body text.
+    expect(css).toMatch(/--ew-background:\s*#fdfcfe/);
+    expect(css).toMatch(/--ew-primary:\s*#6e56cf/);
+    expect(css).toMatch(/--ew-ring:\s*#aa99ec/);
+    expect(css).toMatch(/--ew-collocation:\s*#6550b9/);
+    for (let step = 1; step <= 12; step += 1) {
+      expect(css).toContain(`--ew-violet-${step}:`);
+    }
+
+    // Forced-dark surface (the overlay and the portaled popup) overrides every
+    // semantic token, including the dark collocation violet.
+    expect(css).toMatch(/\.dark[^{]*\{[^}]*--ew-background:\s*#14121f/);
+    expect(css).toMatch(/\.dark[^{]*\{[^}]*--ew-popover:\s*#1b1525/);
+    expect(css).toMatch(/\.dark[^{]*\{[^}]*--ew-border:\s*#473876/);
+    expect(css).toMatch(/\.dark[^{]*\{[^}]*--ew-ring:\s*#6958ad/);
+    expect(css).toMatch(/\.dark[^{]*\{[^}]*--ew-collocation:\s*#baa7ff/);
+    for (let step = 1; step <= 12; step += 1) {
+      expect(css).toContain(`--ew-violet-${step}: #`);
+    }
+  });
+
+  it('generates a collocation text utility and a class-driven dark variant', () => {
+    expect(cssText).toContain('--color-collocation: var(--ew-collocation)');
+    expect(cssText).toContain('.text-collocation');
+    expect(cssSource).toContain('@custom-variant dark');
+  });
+
+  it('lets the options page follow the system theme', () => {
+    expect(optionsCssSource).toMatch(/@media\s*\(prefers-color-scheme:\s*dark\)/);
+    expect(optionsCssSource).toMatch(/--ew-collocation:\s*#6550B9/);
+    expect(optionsCssSource).toMatch(/--ew-collocation:\s*#BAA7FF/);
   });
 
   it('ships the scoped base layer preflight would otherwise provide', () => {

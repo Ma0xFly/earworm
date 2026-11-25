@@ -114,7 +114,7 @@ export function SentenceText({
           data-collocation={span.source}
           data-start={span.start}
           data-end={span.end}
-          className="rounded-sm bg-yellow-200/70 text-inherit dark:bg-yellow-500/30"
+          className="rounded-sm bg-transparent text-collocation"
           title={span.note}
         >
           {marked}

@@ -11,6 +11,10 @@
 @import "tailwindcss/utilities.css";
 @import "tw-animate-css";
 
+/* Class-driven dark: the overlay and its portal are forced dark regardless of
+ * the host page / OS theme. The options page toggles `.dark` from matchMedia. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Scoped base layer (preflight is intentionally disabled, so Tailwind does not
  * provide one). This sheet is injected into the shadow root only; `*` matches
@@ -58,10 +62,25 @@ textarea {
   --color-border: var(--ew-border);
   --color-input: var(--ew-input);
   --color-ring: var(--ew-ring);
-  --radius-sm: calc(var(--ew-radius) - 4px);
-  --radius-md: calc(var(--ew-radius) - 2px);
-  --radius-lg: var(--ew-radius);
-  --radius-xl: calc(var(--ew-radius) + 4px);
+  --color-collocation: var(--ew-collocation);
+  /* Radix Violet 1–12, for components that need a specific step. */
+  --color-violet-1: var(--ew-violet-1);
+  --color-violet-2: var(--ew-violet-2);
+  --color-violet-3: var(--ew-violet-3);
+  --color-violet-4: var(--ew-violet-4);
+  --color-violet-5: var(--ew-violet-5);
+  --color-violet-6: var(--ew-violet-6);
+  --color-violet-7: var(--ew-violet-7);
+  --color-violet-8: var(--ew-violet-8);
+  --color-violet-9: var(--ew-violet-9);
+  --color-violet-10: var(--ew-violet-10);
+  --color-violet-11: var(--ew-violet-11);
+  --color-violet-12: var(--ew-violet-12);
+  /* Spec radii: button/badge 8, card 10, popup 12, large card 16. */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 }
 
 :host {
@@ -69,24 +88,39 @@ textarea {
   all: initial;
   display: block;
 
-  --ew-background: oklch(1 0 0);
-  --ew-foreground: oklch(0.145 0 0);
-  --ew-card: oklch(1 0 0);
-  --ew-card-foreground: oklch(0.145 0 0);
-  --ew-popover: oklch(1 0 0);
-  --ew-popover-foreground: oklch(0.145 0 0);
-  --ew-primary: oklch(0.205 0 0);
-  --ew-primary-foreground: oklch(0.985 0 0);
-  --ew-secondary: oklch(0.97 0 0);
-  --ew-secondary-foreground: oklch(0.205 0 0);
-  --ew-muted: oklch(0.97 0 0);
-  --ew-muted-foreground: oklch(0.556 0 0);
-  --ew-accent: oklch(0.97 0 0);
-  --ew-accent-foreground: oklch(0.205 0 0);
-  --ew-destructive: oklch(0.577 0.245 27.325);
-  --ew-border: oklch(0.922 0 0);
-  --ew-input: oklch(0.922 0 0);
-  --ew-ring: oklch(0.708 0 0);
+  /* A · Reactor Violet, light (Radix Violet 1–12). */
+  --ew-violet-1: #FDFCFE;
+  --ew-violet-2: #FAF8FF;
+  --ew-violet-3: #F4F0FE;
+  --ew-violet-4: #EBE4FF;
+  --ew-violet-5: #E1D9FF;
+  --ew-violet-6: #D4CAFE;
+  --ew-violet-7: #C2B5F5;
+  --ew-violet-8: #AA99EC;
+  --ew-violet-9: #6E56CF;
+  --ew-violet-10: #654DC4;
+  --ew-violet-11: #6550B9;
+  --ew-violet-12: #2F265F;
+
+  --ew-background: #FDFCFE;
+  --ew-foreground: #2F265F;
+  --ew-card: #FFFFFF;
+  --ew-card-foreground: #2F265F;
+  --ew-popover: #FFFFFF;
+  --ew-popover-foreground: #2F265F;
+  --ew-primary: #6E56CF;
+  --ew-primary-foreground: #FFFFFF;
+  --ew-secondary: #FAF8FF;
+  --ew-secondary-foreground: #2F265F;
+  --ew-muted: #F4F0FE;
+  --ew-muted-foreground: #6E6886;
+  --ew-accent: #F4F0FE;
+  --ew-accent-foreground: #2F265F;
+  --ew-destructive: #C4323F;
+  --ew-border: #D4CAFE;
+  --ew-input: #D4CAFE;
+  --ew-ring: #AA99EC;
+  --ew-collocation: #6550B9;
   --ew-radius: 0.625rem;
 
   font-family:
@@ -97,6 +131,47 @@ textarea {
   color: var(--ew-foreground);
   text-align: left;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Forced-dark surface for the video overlay and the Radix portal. The class is
+ * placed on both shadow-root containers by `createShadowUi`, so a portaled
+ * dictionary popup gets the same dark tokens even though it is a sibling of
+ * the React root. `:host(.dark)` also covers a dark class on the host itself. */
+.dark,
+:host(.dark) {
+  /* A · Reactor Violet, dark (Radix Violet 1–12). */
+  --ew-violet-1: #14121F;
+  --ew-violet-2: #1B1525;
+  --ew-violet-3: #291F43;
+  --ew-violet-4: #33255B;
+  --ew-violet-5: #3C2E69;
+  --ew-violet-6: #473876;
+  --ew-violet-7: #56468B;
+  --ew-violet-8: #6958AD;
+  --ew-violet-9: #6E56CF;
+  --ew-violet-10: #7D66D9;
+  --ew-violet-11: #BAA7FF;
+  --ew-violet-12: #E2DDFE;
+
+  --ew-background: #14121F;
+  --ew-foreground: #E2DDFE;
+  --ew-card: #1B1525;
+  --ew-card-foreground: #E2DDFE;
+  --ew-popover: #1B1525;
+  --ew-popover-foreground: #E2DDFE;
+  --ew-primary: #6E56CF;
+  --ew-primary-foreground: #FFFFFF;
+  --ew-secondary: #33255B;
+  --ew-secondary-foreground: #E2DDFE;
+  --ew-muted: #33255B;
+  --ew-muted-foreground: #A9A1C2;
+  --ew-accent: #33255B;
+  --ew-accent-foreground: #E2DDFE;
+  --ew-destructive: #F0626E;
+  --ew-border: #473876;
+  --ew-input: #473876;
+  --ew-ring: #6958AD;
+  --ew-collocation: #BAA7FF;
 }
 
 /* The portal wrapper must not block the page; portal children opt back in. */
