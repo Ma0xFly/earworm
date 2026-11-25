@@ -4,7 +4,7 @@ import { useSettings } from '@/lib/settings';
 /** Subtitle languages whose blur can be toggled independently. */
 export type BlurLanguage = 'en' | 'zh';
 
-/** Settings-backed blur state plus writers used by {@link BlurControls}. */
+/** Settings-backed blur state plus writers used by the quick menu's blur switches. */
 export type UseBlur = {
   blur: { en: boolean; zh: boolean };
   setBlur: (language: BlurLanguage, enabled: boolean) => void;

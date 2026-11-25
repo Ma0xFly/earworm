@@ -209,6 +209,25 @@ function overlayLine(
   );
 }
 
+/** Open the control-bar quick menu and return its shadow-root surface. */
+async function openQuickMenu(app: MountedContentApp): Promise<HTMLElement> {
+  const arrow = document
+    .querySelector('earworm-quick-toggle-host')
+    ?.shadowRoot?.querySelector<HTMLElement>('[data-earworm-quick-menu-trigger]');
+  expect(arrow).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(arrow!);
+  });
+  const menu = await waitFor(() => {
+    const found = app.ui.portalContainer.querySelector<HTMLElement>(
+      '[data-earworm-quick-menu]',
+    );
+    expect(found).not.toBeNull();
+    return found!;
+  });
+  return menu;
+}
+
 async function mountApp(): Promise<{
   app: MountedContentApp;
   video: FakeVideo;
@@ -323,7 +342,7 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/watch?v=vid1');
   seedStorage(SETTINGS_STORAGE_KEY, {
     ...DEFAULT_SETTINGS,
-    ui: { sidebar: true },
+    ui: { enabled: true, sidebar: true },
   });
 
   resetCollocationTable();
@@ -512,16 +531,13 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     const root = app.ui.container.querySelector<HTMLElement>('[data-earworm-root]')!;
     const host = sidebarHost();
     expect(host).not.toBeNull();
+    const menu = await openQuickMenu(app);
     const enSwitch = await waitFor(() => {
-      const element = app.ui.container.querySelector<HTMLElement>(
-        '[aria-label="模糊英文"]',
-      );
+      const element = menu.querySelector<HTMLElement>('[aria-label="模糊英文"]');
       expect(element).not.toBeNull();
       return element!;
     });
-    const zhSwitch = app.ui.container.querySelector<HTMLElement>(
-      '[aria-label="模糊中文"]',
-    )!;
+    const zhSwitch = menu.querySelector<HTMLElement>('[aria-label="模糊中文"]')!;
 
     fireEvent.click(enSwitch);
     await waitFor(() => {

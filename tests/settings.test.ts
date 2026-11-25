@@ -35,6 +35,23 @@ describe('settings', () => {
     expect('extra' in normalized).toBe(false);
   });
 
+  it('keeps the global enabled flag in defaults, normalization and patches', async () => {
+    expect(DEFAULT_SETTINGS.ui.enabled).toBe(true);
+    expect(normalizeSettings({}).ui.enabled).toBe(true);
+    expect(normalizeSettings({ ui: { enabled: false, sidebar: true } }).ui).toEqual({
+      enabled: false,
+      sidebar: true,
+    });
+
+    const next = applySettingsPatch(DEFAULT_SETTINGS, { ui: { enabled: false } });
+    expect(next.ui).toEqual({ enabled: false, sidebar: true });
+
+    const saved = await saveSettings({ ui: { enabled: false } });
+    expect(saved.ui.enabled).toBe(false);
+    expect((readStorage(SETTINGS_STORAGE_KEY) as Settings).ui.enabled).toBe(false);
+    await expect(loadSettings()).resolves.toMatchObject({ ui: { enabled: false } });
+  });
+
   it('merges a nested patch without losing sibling fields', () => {
     const base: Settings = {
       ...DEFAULT_SETTINGS,

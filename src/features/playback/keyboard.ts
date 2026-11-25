@@ -24,6 +24,8 @@ export type ShortcutContext = {
   currentIndex: number;
   time: number;
   seekToSentence: (id: number) => void;
+  /** Global master switch; false lets YouTube keep a/s/d. */
+  enabled?: boolean;
 };
 
 const KEY_ACTIONS: Record<string, ShortcutAction> = {
@@ -150,6 +152,7 @@ export function handleShortcutKey(
   context: ShortcutContext,
 ): boolean {
   if (event.type !== 'keydown') return false;
+  if (context.enabled === false) return false;
   if (event.defaultPrevented) return false;
   if (isImeComposition(event)) return false;
   if (event.ctrlKey || event.metaKey || event.altKey) return false;
