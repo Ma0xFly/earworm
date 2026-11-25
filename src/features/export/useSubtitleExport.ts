@@ -17,7 +17,7 @@ import {
   sanitizeFileName,
 } from '@/lib/export/subtitles';
 
-export type SubtitleExportFormat = 'srt' | 'txt';
+type SubtitleExportFormat = 'srt' | 'txt';
 
 function downloadText(filename: string, content: string, mime: string): void {
   const blob = new Blob([content], { type: `${mime};charset=utf-8` });
@@ -58,5 +58,5 @@ export function useSubtitleExport() {
   const exportSrt = useCallback(() => exportSubtitles('srt'), [exportSubtitles]);
   const exportTxt = useCallback(() => exportSubtitles('txt'), [exportSubtitles]);
 
-  return { exportSubtitles, exportSrt, exportTxt, formatOpen, setFormatOpen };
+  return { exportSrt, exportTxt, formatOpen, setFormatOpen };
 }

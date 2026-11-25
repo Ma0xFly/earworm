@@ -24,7 +24,7 @@ import {
 } from './host';
 
 const BUTTON_CLASS =
-  'inline-flex size-8 items-center justify-center rounded-md text-white/90 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/60';
+  'inline-flex size-8 items-center justify-center rounded-[8px] text-white/90 outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/60';
 
 function stopPlayerEvent(event: SyntheticEvent): void {
   event.stopPropagation();
@@ -110,7 +110,7 @@ export function QuickToggle() {
         side="top"
         align="end"
         sideOffset={8}
-        className="w-64 border border-[#473876] bg-[#1B1525] p-3 text-[#E2DDFE] shadow-xl"
+        className="w-64 rounded-lg border border-violet-6 bg-popover p-3 text-popover-foreground shadow-xl"
       >
         <div
           data-earworm-quick-menu
@@ -119,7 +119,7 @@ export function QuickToggle() {
           <p data-earworm-quick-menu-title className="text-sm font-semibold">
             earworm 快捷菜单
           </p>
-          <Separator className="bg-[#473876]" />
+          <Separator className="bg-violet-6" />
 
           <BlurSwitches className="flex items-center gap-1.5" />
 
@@ -127,7 +127,7 @@ export function QuickToggle() {
             data-translation-progress
             role="status"
             aria-live="polite"
-            className="text-[#BAA7FF]"
+            className="text-popover-foreground/80"
           >
             {progressLabel}
             {progress.failed > 0 ? (
@@ -141,19 +141,19 @@ export function QuickToggle() {
             <button
               type="button"
               onClick={retryAll}
-              className="rounded-md border border-[#473876] px-2 py-1 font-medium text-[#E2DDFE] hover:bg-[#33255B]"
+              className="rounded-[8px] border border-violet-6 px-2 py-1 font-medium text-popover-foreground hover:bg-secondary"
             >
               全部重试
             </button>
           ) : null}
 
-          <Separator className="bg-[#473876]" />
+          <Separator className="bg-violet-6" />
 
           <button
             type="button"
             data-earworm-menu-settings
             onClick={openOptions}
-            className="rounded-md px-2 py-1 text-left hover:bg-[#33255B]"
+            className="rounded-[8px] px-2 py-1 text-left hover:bg-secondary"
           >
             设置
           </button>
@@ -164,7 +164,7 @@ export function QuickToggle() {
               aria-expanded={formatOpen}
               title="导出双语字幕"
               onClick={() => setFormatOpen((open) => !open)}
-              className="rounded-md px-2 py-1 text-left text-[#BAA7FF] hover:bg-[#33255B]"
+              className="rounded-[8px] px-2 py-1 text-left hover:bg-secondary"
             >
               字幕导出
             </button>
@@ -174,7 +174,7 @@ export function QuickToggle() {
                   type="button"
                   data-earworm-export-srt
                   onClick={exportSrt}
-                  className="rounded-md border border-[#473876] px-2 py-1 font-medium text-[#E2DDFE] hover:bg-[#33255B]"
+                  className="rounded-[8px] border border-violet-6 px-2 py-1 font-medium text-popover-foreground hover:bg-secondary"
                 >
                   SRT
                 </button>
@@ -182,7 +182,7 @@ export function QuickToggle() {
                   type="button"
                   data-earworm-export-txt
                   onClick={exportTxt}
-                  className="rounded-md border border-[#473876] px-2 py-1 font-medium text-[#E2DDFE] hover:bg-[#33255B]"
+                  className="rounded-[8px] border border-violet-6 px-2 py-1 font-medium text-popover-foreground hover:bg-secondary"
                 >
                   TXT
                 </button>

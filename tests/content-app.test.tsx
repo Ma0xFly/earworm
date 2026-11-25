@@ -41,6 +41,36 @@ describe('content app shell', () => {
       expect(app).toHaveAttribute('data-blur-en', '1');
       expect(app).toHaveAttribute('data-blur-zh', '0');
     });
+    expect(
+      ui.container.querySelector('[data-earworm-continuous-toggle]'),
+      'continuous switch mounts with the master switch on',
+    ).not.toBeNull();
+
+    act(() => root.unmount());
+    ui.unmount();
+  });
+
+  it('hides the continuous playback switch when the master switch is off', async () => {
+    seedStorage(SETTINGS_STORAGE_KEY, {
+      ...DEFAULT_SETTINGS,
+      ui: { enabled: false },
+    });
+
+    const ui = createShadowUi({ css: '' });
+    ui.mount();
+    const root = createRoot(ui.container);
+
+    await act(async () => {
+      root.render(
+        <AppProviders container={ui.portalContainer}>
+          <ContentApp />
+        </AppProviders>,
+      );
+    });
+
+    await waitFor(() => {
+      expect(ui.container.querySelector('[data-earworm-continuous-toggle]')).toBeNull();
+    });
 
     act(() => root.unmount());
     ui.unmount();

@@ -133,7 +133,7 @@ export function DictionaryCard({ view, onClose }: DictionaryCardProps) {
         aria-label="关闭词典弹窗"
         title="关闭词典弹窗"
         onClick={onClose}
-        className="absolute top-1.5 right-1.5 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="absolute top-1.5 right-1.5 inline-flex size-6 items-center justify-center rounded-[8px] text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <XIcon className="size-3.5" />
       </button>

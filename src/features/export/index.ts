@@ -1,4 +1,1 @@
-export {
-  useSubtitleExport,
-  type SubtitleExportFormat,
-} from './useSubtitleExport';
+export { useSubtitleExport } from './useSubtitleExport';

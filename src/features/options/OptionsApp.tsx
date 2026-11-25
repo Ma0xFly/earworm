@@ -184,7 +184,7 @@ export function OptionsApp() {
   };
 
   return (
-    <main className="earworm-options min-h-screen bg-muted/30 py-12">
+    <main className="earworm-options min-h-screen py-12">
       <form
         className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-12 sm:px-6"
         aria-labelledby="options-title"

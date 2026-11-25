@@ -2,7 +2,7 @@ import { useSettings } from '@/lib/settings';
 import { Overlay } from '@/features/overlay';
 import { BlurStyles, blurDataAttributes } from '@/features/blur';
 import { DictionaryPopup } from '@/features/dictionary';
-import { PlaybackShortcuts } from '@/features/playback';
+import { ContinuousToggle, PlaybackShortcuts } from '@/features/playback';
 import { QuickToggle } from '@/features/quick-toggle';
 
 /**
@@ -23,13 +23,13 @@ export function ContentApp() {
     <div
       data-earworm-root
       {...blurAttributes}
-      data-earworm-enabled={enabled ? '1' : '0'}
       className="pointer-events-none fixed inset-0 overflow-visible"
     >
       <BlurStyles />
       <QuickToggle />
       {enabled ? (
         <>
+          <ContinuousToggle />
           <Overlay />
           <DictionaryPopup />
         </>
