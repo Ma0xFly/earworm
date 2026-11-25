@@ -228,15 +228,6 @@ describe('session failure states', () => {
     expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('treats ASR-only tracks as no-captions', async () => {
-    renderSession();
-    await deliverFailure('vid1', 'asr-only');
-
-    expect(api?.state.status).toBe('no-captions');
-    expect(api?.state.sentences).toEqual([]);
-    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-  });
-
   it('surfaces acquisition errors with the classified reason', async () => {
     renderSession();
     await deliverFailure('vid1', 'timeout');
@@ -330,6 +321,51 @@ describe('session track pipeline', () => {
       resolveCache?.({ hit: false });
     });
     await waitForTranslation('done');
+  });
+
+  it('merges an ASR track with pause and word-count boundaries', async () => {
+    renderSession();
+    await deliverTrack({
+      videoId: 'vid1',
+      lang: 'en',
+      kind: 'asr',
+      cues: [
+        { start: 0, end: 2, text: 'Hello there' },
+        { start: 3, end: 5, text: 'how are you today' },
+      ],
+    });
+    await waitForStatus('ready');
+
+    expect(
+      api?.state.sentences.map(({ text, start, end, cueStart, cueEnd }) => ({
+        text,
+        start,
+        end,
+        cueStart,
+        cueEnd,
+      })),
+    ).toEqual([
+      { text: 'Hello there', start: 0, end: 2, cueStart: 0, cueEnd: 0 },
+      { text: 'how are you today', start: 3, end: 5, cueStart: 1, cueEnd: 1 },
+    ]);
+  });
+
+  it('keeps a manual track on punctuation-only sentence rules', async () => {
+    renderSession();
+    await deliverTrack({
+      videoId: 'vid1',
+      lang: 'en',
+      kind: 'manual',
+      cues: [
+        { start: 0, end: 1.5, text: 'Hello there' },
+        { start: 3, end: 4.5, text: 'how are you today' },
+      ],
+    });
+    await waitForStatus('ready');
+
+    expect(api?.state.sentences.map(({ text }) => text)).toEqual([
+      'Hello there how are you today',
+    ]);
   });
 
   it('translates a cache miss in batches of 40 with global indexes and neighbour context', async () => {

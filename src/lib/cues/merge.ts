@@ -14,6 +14,21 @@
 
 import type { Cue, Sentence } from '@/lib/contracts';
 
+/** ASR sentence break: silence between adjacent cues, in seconds (spec §5). */
+export const ASR_PAUSE_SECONDS = 0.8;
+/** ASR sentence break: word cap, applied on a cue/fragment boundary (spec §5). */
+export const ASR_MAX_WORDS = 20;
+
+/** Tunable ASR sentence rules; absent fields fall back to the spec defaults. */
+export type MergeOptions = {
+  /** Apply the ASR pause/word-count rules in addition to punctuation. */
+  asr?: boolean;
+  /** Pause between adjacent cues that ends a sentence (ASR only). */
+  pauseSeconds?: number;
+  /** Sentence word cap (ASR only). */
+  maxWords?: number;
+};
+
 /** Invisible characters that must never reach sentence text. */
 const ZERO_WIDTH = /[\u200B-\u200D\u2060\uFEFF\u00AD]/g;
 
@@ -51,6 +66,11 @@ function normalizeCueText(text: string): string {
 /** True when text has at least one letter or digit (punctuation-only cues are junk). */
 function hasContent(text: string): boolean {
   return /[\p{L}\p{N}]/u.test(text);
+}
+
+/** Whitespace-separated word count of one fragment (normalized text). */
+function wordCount(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
 }
 
 /** One piece of a cue that belongs to exactly one sentence. */
@@ -170,17 +190,28 @@ function cueFragments(cue: Cue, cueIndex: number): Fragment[] {
 /**
  * Merge YouTube cues into complete sentences.
  *
- * Heuristics (documented per issue #3): a sentence ends at `. ! ? …`
+ * Manual tracks (the default) use punctuation only: a sentence ends at `. ! ? …`
  * optionally followed by closing quotes/brackets. A single `.` is ignored when
  * it belongs to a decimal (`3.14`), a common abbreviation (`Mr.`, `etc.`), a
  * dotted acronym (`U.S.`, `e.g.`) or a word-initial (`J. Smith`); a cue-final
  * dot always closes the sentence. Cues without a sentence end fold into the
  * next one, and a cue holding several sentences is split in time proportion to
- * each fragment's character count. No ASR pause/word-count rules (ADR-0001).
+ * each fragment's character count.
+ *
+ * ASR tracks (`{ asr: true }`) additionally end a sentence at a pause between
+ * adjacent cues of at least `pauseSeconds` (default
+ * {@link ASR_PAUSE_SECONDS}), and cap a sentence at `maxWords` words (default
+ * {@link ASR_MAX_WORDS}), breaking on a fragment boundary. Punctuation rules
+ * still apply first; every break lands between fragments, so `text` stays
+ * exactly the in-order cue text joined with single spaces.
  */
-export function mergeCuesToSentences(cues: Cue[]): Sentence[] {
+export function mergeCuesToSentences(cues: Cue[], options: MergeOptions = {}): Sentence[] {
+  const asr = options.asr === true;
+  const pauseSeconds = options.pauseSeconds ?? ASR_PAUSE_SECONDS;
+  const maxWords = options.maxWords ?? ASR_MAX_WORDS;
   const sentences: Sentence[] = [];
   let group: Fragment[] = [];
+  let groupWords = 0;
 
   const flush = (): void => {
     if (group.length === 0) return;
@@ -193,11 +224,26 @@ export function mergeCuesToSentences(cues: Cue[]): Sentence[] {
       cueEnd: group[group.length - 1]!.cueIndex,
     });
     group = [];
+    groupWords = 0;
   };
 
   cues.forEach((cue, cueIndex) => {
     for (const fragment of cueFragments(cue, cueIndex)) {
+      if (asr && group.length > 0) {
+        const previousCue = cues[group[group.length - 1]!.cueIndex];
+        // ASR pause rule: a gap since the previous contributing cue's end.
+        // Cues with no text never reach here, so an empty cue cannot fake a
+        // pause by widening the gap to the previous real cue.
+        if (previousCue && cue.start - previousCue.end >= pauseSeconds) flush();
+      }
+      if (asr && group.length > 0) {
+        // Word cap: never let the accumulated sentence grow past `maxWords`.
+        // A single fragment longer than the cap still stands alone.
+        if (groupWords + wordCount(fragment.text) > maxWords) flush();
+      }
       group.push(fragment);
+      groupWords += wordCount(fragment.text);
+      // Punctuation always closes first; the ASR rules only add boundaries.
       if (fragment.closes) flush();
     }
   });
