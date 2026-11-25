@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# WXT build/dev output
+.wxt/
+.output/
+dist/
+stats.html
+*.zip
+
+# test / coverage output
+coverage/
+.vitest/
+
+# local data inputs (generated public/data/*.json artifacts ARE committed)
+data/*.csv
+data/*.txt
+data/*.jsonl
+!data/README.md
+
+# editor / OS noise
+.DS_Store
+.idea/
+.vscode/
+*.log

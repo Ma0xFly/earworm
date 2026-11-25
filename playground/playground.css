@@ -1,0 +1,580 @@
+/*
+ * Page-level styles for the offline playground (T14).
+ *
+ * Only the *host page* is styled here: the Earworm UI itself lives in the
+ * shadow root and receives the extension's own Tailwind stylesheet, so nothing
+ * in this file can leak into the real components.
+ */
+
+:root {
+  color-scheme: dark;
+  --playground-bg: #0f0f0f;
+  --playground-surface: #212121;
+  --playground-surface-raised: #272727;
+  --playground-border: #303030;
+  --playground-text: #f1f1f1;
+  --playground-muted: #aaaaaa;
+  --playground-accent: #ff4e45;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--playground-bg);
+  color: var(--playground-text);
+  font-family:
+    "Roboto",
+    "Noto Sans SC",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------------------------------------------------------------- header -- */
+
+.yt-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--playground-border);
+  background: var(--playground-bg);
+}
+
+.yt-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--playground-text);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.yt-brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 21px;
+  border-radius: 6px;
+  background: var(--playground-accent);
+  color: #fff;
+  font-size: 11px;
+}
+
+.yt-brand-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.yt-brand-text small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--playground-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
+.yt-search {
+  flex: 1;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.yt-search input {
+  width: 100%;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--playground-border);
+  border-radius: 18px;
+  background: #121212;
+  color: var(--playground-muted);
+}
+
+.yt-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.yt-chip {
+  padding: 2px 8px;
+  border: 1px solid #3d3d3d;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--playground-muted);
+}
+
+.yt-avatar,
+.channel-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6d5efc, #ff4e45);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------- dev toolbar ---- */
+
+.dev-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding: 10px 20px 8px;
+  border-bottom: 1px solid #3a3a3a;
+  background: #171717f2;
+  backdrop-filter: blur(6px);
+  font-size: 13px;
+}
+
+.dev-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.dev-label {
+  color: var(--playground-muted);
+  font-size: 12px;
+}
+
+.dev-scenes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dev-scene {
+  padding: 5px 12px;
+  border: 1px solid #3d3d3d;
+  border-radius: 999px;
+  background: #1f1f1f;
+  color: #e5e5e5;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.dev-scene:hover {
+  background: #2a2a2a;
+}
+
+.dev-scene.is-active {
+  border-color: var(--playground-accent);
+  background: #3a1c1b;
+  color: #ffd9d6;
+}
+
+.dev-scene:focus-visible,
+.dev-reload:focus-visible,
+.dev-toggle input:focus-visible {
+  outline: 2px solid var(--playground-accent);
+  outline-offset: 2px;
+}
+
+.dev-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid #3d3d3d;
+  border-radius: 999px;
+  color: #ddd;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dev-toggle input {
+  accent-color: var(--playground-accent);
+  margin: 0;
+}
+
+.dev-stats {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #101010;
+  color: #9fd4a3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.dev-reload {
+  margin-left: auto;
+  padding: 5px 12px;
+  border: 1px solid #3d3d3d;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--playground-muted);
+  cursor: pointer;
+}
+
+.dev-reload:hover {
+  background: #262626;
+  color: #eee;
+}
+
+.dev-note {
+  margin-top: 6px;
+  color: var(--playground-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dev-note strong {
+  color: #ffd9d6;
+  font-weight: 600;
+}
+
+.dev-note code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #101010;
+  color: #c8c8c8;
+}
+
+.dev-sep {
+  margin: 0 6px;
+  color: #555;
+}
+
+/* ----------------------------------------------------------- watch page --- */
+
+.watch-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 402px;
+  gap: 24px;
+  align-items: start;
+  /* Full width (not centered): the mock `#secondary` column ends at
+   * `viewport - 24px`, matching the watch-page gutter. */
+  padding: 24px;
+}
+
+.primary-column {
+  min-width: 0;
+}
+
+.player-shell {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+  cursor: pointer;
+}
+
+.html5-main-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  pointer-events: none;
+}
+
+.player-backdrop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 78, 69, 0.12), transparent 45%),
+    linear-gradient(140deg, #141414 0%, #050505 55%, #101018 100%);
+}
+
+.player-watermark {
+  padding: 6px 14px;
+  border: 1px dashed #2f2f2f;
+  border-radius: 999px;
+  color: #3f3f3f;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.ytp-chrome-bottom {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 12px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.82));
+}
+
+.player-button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.player-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.player-time {
+  min-width: 92px;
+  color: #ddd;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.player-time-sep {
+  margin: 0 3px;
+  color: #888;
+}
+
+.player-progress {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+}
+
+.player-progress::after {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
+
+.player-progress-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0%;
+  border-radius: 2px;
+  background: var(--playground-accent);
+}
+
+.player-settings,
+.player-cc {
+  color: #ddd;
+  font-size: 12px;
+}
+
+.player-cc {
+  padding: 0 4px;
+  border: 1px solid #aaa;
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.video-title {
+  margin: 18px 0 10px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.video-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.video-meta-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.video-channel {
+  font-weight: 600;
+}
+
+.video-meta-sub {
+  color: var(--playground-muted);
+  font-size: 12px;
+}
+
+.pill-button {
+  margin-left: auto;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #0f0f0f;
+  font-weight: 600;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.video-description {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--playground-surface);
+  color: #ddd;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.video-description p {
+  margin: 0 0 8px;
+}
+
+.video-description p:last-child {
+  margin-bottom: 0;
+}
+
+.video-description code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #101010;
+  color: #ffb4af;
+  font-size: 12px;
+}
+
+kbd {
+  padding: 1px 6px;
+  border: 1px solid #4a4a4a;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #101010;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+/* -------------------------------------------------------- recommendations -- */
+
+.secondary-column {
+  min-width: 0;
+}
+
+.secondary-title {
+  margin: 2px 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.rec-card {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rec-thumb {
+  flex: 0 0 168px;
+  width: 168px;
+  height: 94px;
+  border-radius: 8px;
+}
+
+.rec-thumb-1 {
+  background: linear-gradient(135deg, #25335c, #6a8dff);
+}
+
+.rec-thumb-2 {
+  background: linear-gradient(135deg, #3a2141, #c26bff);
+}
+
+.rec-thumb-3 {
+  background: linear-gradient(135deg, #143d33, #48c9a9);
+}
+
+.rec-thumb-4 {
+  background: linear-gradient(135deg, #4d2b12, #f4a261);
+}
+
+.rec-thumb-5 {
+  background: linear-gradient(135deg, #3d1622, #ff6b81);
+}
+
+.rec-thumb-6 {
+  background: linear-gradient(135deg, #1f3547, #4ea8de);
+}
+
+.rec-info {
+  min-width: 0;
+}
+
+.rec-info h3 {
+  display: -webkit-box;
+  margin: 0 0 4px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.rec-info p {
+  margin: 0;
+  color: var(--playground-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+  .watch-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .secondary-column {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------- fatal ----- */
+
+.playground-error {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  max-height: 50vh;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  background: #3a0d0d;
+  color: #ffd9d6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
