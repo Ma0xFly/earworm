@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { defineConfig } from 'wxt';
 import tailwindcss from '@tailwindcss/vite';
+import { BRAND_ICON_FILES, CONTROL_BAR_ICON } from './scripts/brand-icons';
 
 // WXT config. `srcDir` keeps every source file under `src/` (entrypoints,
 // shared contracts, features) instead of the repository root.
@@ -13,12 +14,7 @@ export default defineConfig({
     version: '0.1.0',
     // WXT's icon auto-discovery only matches `icon-N.png` at the public root;
     // the finalized logo lives under public/brand/, so declare it explicitly.
-    icons: {
-      '16': 'brand/earworm-icon-16.png',
-      '32': 'brand/earworm-icon-32.png',
-      '48': 'brand/earworm-icon-48.png',
-      '128': 'brand/earworm-icon-128.png',
-    },
+    icons: BRAND_ICON_FILES,
     options_ui: {
       page: 'options.html',
       open_in_tab: true,
@@ -28,9 +24,9 @@ export default defineConfig({
     optional_host_permissions: ['http://*/*', 'https://*/*'],
     web_accessible_resources: [
       {
-        // brand/* must be web-accessible so #31's control-bar <img> can load
-        // the finalized logo from a YouTube page.
-        resources: ['data/*', 'brand/*'],
+        // Only the control-bar logo is loaded from a YouTube page. The
+        // options-page images and the source artwork stay extension-private.
+        resources: ['data/*', CONTROL_BAR_ICON],
         matches: ['https://www.youtube.com/*'],
       },
     ],

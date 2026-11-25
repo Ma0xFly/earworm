@@ -36,7 +36,7 @@ export function formatSrt(sentences: readonly LearningSentence[]): string {
     const endMs = Math.max(startMs + 1, Math.round(sentence.end * 1000));
     return [
       String(index + 1),
-      `${formatMs(startMs)} --> ${formatMs(endMs)}`,
+      `${formatTimestamp(startMs / 1000)} --> ${formatTimestamp(endMs / 1000)}`,
       oneLine(sentence.text),
       oneLine(sentence.zh),
     ].join('\n');

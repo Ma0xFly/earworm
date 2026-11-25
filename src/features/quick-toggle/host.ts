@@ -94,22 +94,22 @@ export function createQuickToggleHost({
     return true;
   };
 
+  const detach = (): void => {
+    host.remove();
+  };
+
   return {
     host,
     container,
     attach,
-    detach() {
-      host.remove();
-    },
-    destroy() {
-      host.remove();
-    },
+    detach,
+    destroy: detach,
   };
 }
 
 /** Re-attach the host after the control bar is replaced by YouTube. */
 export function startQuickToggleHostLifecycle(
-  toggle: QuickToggleHost,
+  instance: QuickToggleHost,
   doc: Document = document,
 ): () => void {
   let disposed = false;
@@ -119,8 +119,14 @@ export function startQuickToggleHostLifecycle(
 
   const refresh = (): void => {
     if (disposed) return;
-    toggle.attach();
+    instance.attach();
     watchControlBar();
+  };
+
+  /** One scheduler for both page changes and the initial attach retries. */
+  const scheduleRetries = (): void => {
+    for (const timer of timers) clearTimeout(timer);
+    timers = LIFECYCLE_RETRY_DELAYS_MS.map((delay) => setTimeout(refresh, delay));
   };
 
   const watchControlBar = (): void => {
@@ -150,8 +156,7 @@ export function startQuickToggleHostLifecycle(
 
   const onPageChange = (): void => {
     refresh();
-    for (const timer of timers) clearTimeout(timer);
-    timers = LIFECYCLE_RETRY_DELAYS_MS.map((delay) => setTimeout(refresh, delay));
+    scheduleRetries();
   };
 
   const view = doc.defaultView;
@@ -161,11 +166,7 @@ export function startQuickToggleHostLifecycle(
   view?.addEventListener('resize', onPageChange);
 
   refresh();
-  timers = LIFECYCLE_RETRY_DELAYS_MS.map((delay) =>
-    setTimeout(() => {
-      if (!disposed) toggle.attach();
-    }, delay),
-  );
+  scheduleRetries();
 
   return () => {
     disposed = true;

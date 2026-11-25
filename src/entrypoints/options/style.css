@@ -5,7 +5,11 @@
 /* The content stylesheet declares its design tokens on `:host` (shadow root).
  * A standalone extension page has no shadow host, so mirror them on `:root`.
  * Options follows the OS theme: `main.tsx` toggles `.dark` from matchMedia,
- * and these tokens cover the same states before/without that class. */
+ * and these tokens cover the same states before/without that class.
+ *
+ * The light block and the `prefers-color-scheme` block are an intentional copy:
+ * they must paint the correct background before the module script runs (no
+ * `.dark` class yet), so the shared `.dark` tokens cannot replace them. */
 :root {
   --ew-violet-1: #FDFCFE;
   --ew-violet-2: #FAF8FF;
@@ -31,7 +35,8 @@
   --ew-secondary: #FAF8FF;
   --ew-secondary-foreground: #2F265F;
   --ew-muted: #F4F0FE;
-  --ew-muted-foreground: #6E6886;
+  /* Helper text derives from spec body/background tokens, not an invented hex. */
+  --ew-muted-foreground: color-mix(in srgb, var(--ew-foreground) 70%, var(--ew-background));
   --ew-accent: #F4F0FE;
   --ew-accent-foreground: #2F265F;
   --ew-destructive: #C4323F;
@@ -68,7 +73,7 @@
     --ew-secondary: #33255B;
     --ew-secondary-foreground: #E2DDFE;
     --ew-muted: #33255B;
-    --ew-muted-foreground: #A9A1C2;
+    --ew-muted-foreground: color-mix(in srgb, var(--ew-foreground) 70%, var(--ew-background));
     --ew-accent: #33255B;
     --ew-accent-foreground: #E2DDFE;
     --ew-destructive: #F0626E;

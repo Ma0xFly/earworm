@@ -1,8 +1,8 @@
 # 归属合规审计（T15 / issue #16）
 
-审计日期：2026-11-24
-审计基线：`integration/earworm-v1` @ `6acfab6`（T1–T12 除 T13）
-分支：`ticket/15`
+审计日期：2026-11-25
+审计基线：`integration/earworm-v1` @ `28f5390`（v1.1 评审修复）
+分支：`ticket/v11-review-fixes`
 
 本审计覆盖 Earworm v1 中 copy/adapt 的代码、prompt 与随扩展分发的数据，目标是
 ADR-0004 的「只 copy MIT 源，GPL/AGPL 只借鉴思路」以及 spec §4/§7.9 的 MIT /
@@ -18,7 +18,7 @@ node scripts/audit-attribution.mjs          # 在仓库根运行；也可传入�
 
 脚本检查：
 
-1. 18 个 adapted 文件的顶部注释包含
+1. 15 个 adapted 文件的顶部注释包含
    `Adapted for Earworm (MIT) from <repo> (<license>) — Copyright (c) <year> <author>`，
    且 repo 与 copyright 行和来源匹配；
 2. `src/`、`scripts/`、`tests/` 中任何提到上游名称的文件都有对应版权头，
@@ -32,7 +32,7 @@ node scripts/audit-attribution.mjs          # 在仓库根运行；也可传入�
    Lison & Tiedemann 署名；
 7. 所有带 `Adapted for Earworm` 头的文件都在审计表内。
 
-本次输出：**66 项检查全部通过**。完整输出已作为 issue #16 评论保存。
+本次输出：**63 项检查全部通过**。完整输出已作为 issue #16 评论保存。
 
 ## 代码审计表
 
@@ -124,17 +124,16 @@ OpenSubtitles 引用（同时写入 `NOTICE` 与 README）：
 
 ## 验证
 
-在合并 T13 之前、基于 `6acfab6`：
+在 v1.1 合并后、基于 `28f5390`：
 
 ```text
 pnpm typecheck  PASS
-pnpm test       PASS — 55 files / 495 tests
-pnpm build      PASS — .output/chrome-mv3（6.84 MB，manifest verify OK）
-node scripts/audit-attribution.mjs  PASS — 66/66 checks
+pnpm test       PASS — 63 files / 542 tests
+pnpm build      PASS — .output/chrome-mv3（manifest verify OK）
+node scripts/audit-attribution.mjs  PASS — 63/63 checks
 ```
 
-合并最新 `integration/earworm-v1` tip 后需重跑上述四项；issue #16 评论记录
-合并后的提交 SHA。
+后续再合并 `integration/earworm-v1` 时需重跑上述四项。
 
 ## 残余风险 / 后续注意
 

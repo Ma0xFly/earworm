@@ -5,6 +5,7 @@
  * `tests/manifest.test.ts`.
  */
 import { existsSync, readFileSync } from 'node:fs';
+import { BRAND_ICON_FILES, CONTROL_BAR_ICON } from './brand-icons';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -142,13 +143,7 @@ export function manifestProblems(outputDir: string): string[] {
 
   // The finalized logo is the only extension icon. WXT's auto-discovery
   // cannot see public/brand/, so the contract must be asserted explicitly.
-  const expectedIcons: Record<string, string> = {
-    '16': 'brand/earworm-icon-16.png',
-    '32': 'brand/earworm-icon-32.png',
-    '48': 'brand/earworm-icon-48.png',
-    '128': 'brand/earworm-icon-128.png',
-  };
-  for (const [size, relative] of Object.entries(expectedIcons)) {
+  for (const [size, relative] of Object.entries(BRAND_ICON_FILES)) {
     if (manifest.icons?.[size] !== relative) {
       problems.push(`icons.${size} must be "${relative}", got ${String(manifest.icons?.[size])}`);
     }
@@ -160,13 +155,20 @@ export function manifestProblems(outputDir: string): string[] {
     problems.push('earworm-icon-source.png is a source asset and must not be a browser icon');
   }
 
-  const brandWar = (manifest.web_accessible_resources ?? []).find((entry) =>
-    entry.resources?.includes('brand/*'),
+  const warEntries = manifest.web_accessible_resources ?? [];
+  const controlIconWar = warEntries.find((entry) =>
+    entry.resources?.includes(CONTROL_BAR_ICON),
   );
-  if (!brandWar) {
-    problems.push('web_accessible_resources must expose "brand/*"');
-  } else if (!brandWar.matches?.includes('https://www.youtube.com/*')) {
-    problems.push('"brand/*" web_accessible_resource must match YouTube');
+  if (!controlIconWar) {
+    problems.push(`web_accessible_resources must expose "${CONTROL_BAR_ICON}"`);
+  } else if (!controlIconWar.matches?.includes('https://www.youtube.com/*')) {
+    problems.push(`"${CONTROL_BAR_ICON}" web_accessible_resource must match YouTube`);
+  }
+  if (warEntries.some((entry) => entry.resources?.includes('brand/*'))) {
+    problems.push('web_accessible_resources must not expose all of brand/*');
+  }
+  if (fileExists('brand/earworm-icon-source.png')) {
+    problems.push('the pre-crop source image must not be shipped in the build output');
   }
 
   // Attribution must ship with the distributed extension package, not only in

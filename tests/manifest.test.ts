@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { manifestProblems } from '../scripts/verify-manifest';
+import { BRAND_ICON_FILES, CONTROL_BAR_ICON } from '../scripts/brand-icons';
 
 const outputDir = path.resolve(process.cwd(), '.output/chrome-mv3');
 const manifestPath = path.join(outputDir, 'manifest.json');
@@ -39,20 +40,21 @@ describe('built extension manifest', () => {
       web_accessible_resources?: Array<{ resources?: string[]; matches?: string[] }>;
     };
 
-    for (const size of ['16', '32', '48', '128']) {
-      const expected = `brand/earworm-icon-${size}.png`;
+    for (const [size, expected] of Object.entries(BRAND_ICON_FILES)) {
       expect(manifest.icons?.[size], `icons.${size}`).toBe(expected);
       expect(existsSync(path.join(outputDir, expected)), expected).toBe(true);
     }
     expect(manifest.icons && Object.values(manifest.icons)).not.toContain(
       'brand/earworm-icon-source.png',
     );
+    expect(existsSync(path.join(outputDir, 'brand', 'earworm-icon-source.png'))).toBe(false);
 
     const brandWar = (manifest.web_accessible_resources ?? []).find((entry) =>
-      entry.resources?.includes('brand/*'),
+      entry.resources?.includes(CONTROL_BAR_ICON),
     );
-    expect(brandWar, 'web_accessible_resources must expose brand/*').toBeDefined();
+    expect(brandWar, `web_accessible_resources must expose ${CONTROL_BAR_ICON}`).toBeDefined();
     expect(brandWar?.matches).toContain('https://www.youtube.com/*');
+    expect(brandWar?.resources).not.toContain('brand/*');
   });
 
   it('ships attribution and keeps the MAIN-world inject script chrome-free', () => {
