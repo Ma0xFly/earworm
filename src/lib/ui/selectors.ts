@@ -37,7 +37,9 @@ export const PAGE_SELECTORS = {
   secondaryInner: '#secondary-inner',
   /** Bottom player controls; the overlay lifts above this bar. */
   controlBar: '.ytp-chrome-bottom',
-  /** CC button the fallback nudges to arm captions. */
+  /** Right-hand button group; the quick toggle is inserted here. */
+  controlButtons: '.ytp-right-controls',
+  /** CC button the fallback nudges to arm captions and the toggle anchors to. */
   subtitlesButton: '.ytp-subtitles-button',
 } as const;
 
@@ -70,6 +72,11 @@ export function firstMatch(
 /** The player the overlay/sidebar geometry should follow on this page. */
 export function findPlayerElement(doc: Document = document): Element | null {
   return firstMatch(doc, PLAYER_LOOKUP);
+}
+
+/** The CC button the quick toggle must sit immediately to the left of. */
+export function findSubtitlesButton(doc: Document = document): Element | null {
+  return doc.querySelector(PAGE_SELECTORS.subtitlesButton);
 }
 
 /** Every caption layer node currently in the page. */

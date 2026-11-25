@@ -288,6 +288,16 @@ describe('PlaybackShortcuts', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('lets a/s/d through when the global master switch is off', () => {
+    setSentences(session.state.sentences as LearningSentence[], 1);
+    render(<PlaybackShortcuts enabled={false} />);
+
+    const event = press(document.body, { key: 'd' });
+
+    expect(session.seekToSentence).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it('prevents the site shortcut only when it handles the key', () => {
     render(<PlaybackShortcuts />);
 

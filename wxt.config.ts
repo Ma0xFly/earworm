@@ -20,7 +20,7 @@ export default defineConfig({
     optional_host_permissions: ['http://*/*', 'https://*/*'],
     web_accessible_resources: [
       {
-        resources: ['data/*'],
+        resources: ['data/*', 'brand/*'],
         matches: ['https://www.youtube.com/*'],
       },
     ],

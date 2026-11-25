@@ -5,7 +5,7 @@ import { fireEvent, waitFor, within } from '@testing-library/react';
 import { DEFAULT_SETTINGS, type Settings } from '@/lib/contracts';
 import { SETTINGS_STORAGE_KEY, SettingsProvider } from '@/lib/settings';
 import { createShadowUi } from '@/lib/ui/shadow';
-import { BlurControls } from '@/features/blur';
+import { BlurStyles, BlurSwitches } from '@/features/blur';
 import { AppProviders } from '@/features/app/providers';
 import { ContentApp } from '@/features/app/ContentApp';
 import { readStorage, seedStorage } from './mocks/chrome';
@@ -44,11 +44,11 @@ afterEach(() => {
   }
 });
 
-describe('BlurControls', () => {
+describe('blur switches (quick-menu controls)', () => {
   it('renders two independent switches with accessible names from persisted blur settings', async () => {
     seeded({ en: true, zh: false });
     const { ui } = await render(
-      createElement(SettingsProvider, null, createElement(BlurControls)),
+      createElement(SettingsProvider, null, createElement(BlurSwitches)),
     );
 
     const en = await waitFor(() =>
@@ -62,14 +62,14 @@ describe('BlurControls', () => {
     expect(within(ui.container).getByText('英')).toBeInTheDocument();
     expect(within(ui.container).getByText('中')).toBeInTheDocument();
 
-    // Happy path: the controls do not depend on session/caption state.
-    expect(ui.container.querySelector('[data-earworm-blur-controls]')).not.toBeNull();
+    // v1.1: the old floating glass pill is gone; the switches live in the menu.
+    expect(ui.container.querySelector('[data-earworm-blur-controls]')).toBeNull();
   });
 
   it('persists each blur toggle independently without resetting its sibling', async () => {
     seeded({ en: false, zh: false });
     const { ui } = await render(
-      createElement(SettingsProvider, null, createElement(BlurControls)),
+      createElement(SettingsProvider, null, createElement(BlurSwitches)),
     );
 
     const en = await waitFor(() =>
@@ -112,7 +112,7 @@ describe('BlurControls', () => {
           <p data-lang="zh">你好</p>
           <p data-no-lang>no language marker</p>
         </div>
-        <BlurControls />
+        <BlurStyles />
       </SettingsProvider>,
     );
 
@@ -148,10 +148,20 @@ describe('BlurControls', () => {
     expect(css).toMatch(/:focus-within[^{]*\{[^}]*filter:\s*none/);
   });
 
-  it('applies the blur end to end from a switch through ContentApp attributes', async () => {
+  it('applies the blur end to end from a menu switch through ContentApp attributes', async () => {
     seeded({ en: false, zh: false });
-    const { ui, root } = mountShadow();
 
+    const player = document.createElement('div');
+    player.id = 'movie_player';
+    const bar = document.createElement('div');
+    bar.className = 'ytp-chrome-bottom';
+    const cc = document.createElement('button');
+    cc.className = 'ytp-subtitles-button';
+    bar.appendChild(cc);
+    player.appendChild(bar);
+    document.body.appendChild(player);
+
+    const { ui, root } = mountShadow();
     await act(async () => {
       root.render(
         <AppProviders container={ui.portalContainer}>
@@ -160,8 +170,21 @@ describe('BlurControls', () => {
       );
     });
 
+    const host = document.querySelector('earworm-quick-toggle-host');
+    const arrow = host?.shadowRoot?.querySelector<HTMLElement>(
+      '[data-earworm-quick-menu-trigger]',
+    );
+    expect(arrow).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(arrow!);
+    });
+    const menu = await waitFor(() => {
+      const found = ui.portalContainer.querySelector('[data-earworm-quick-menu]');
+      expect(found).not.toBeNull();
+      return found!;
+    });
     const en = await waitFor(() =>
-      within(ui.container).getByRole('switch', { name: '模糊英文' }),
+      within(menu as HTMLElement).getByRole('switch', { name: '模糊英文' }),
     );
     const appRoot = await waitFor(() => {
       const element = ui.container.querySelector('[data-earworm-root]');
@@ -183,8 +206,8 @@ describe('BlurControls', () => {
       expect(appRoot).toHaveAttribute('data-blur-zh', '0');
     });
 
-    // Any node a feature (T8/T9) renders with `data-lang` inside the shadow
-    // root is picked up by the same sheet, with no per-feature wiring.
+    // Any node a feature renders with `data-lang` inside the shadow root is
+    // picked up by the same sheet, with no per-feature wiring.
     const caption = ui.container.ownerDocument.createElement('p');
     caption.setAttribute('data-lang', 'en');
     caption.textContent = 'Hello';
