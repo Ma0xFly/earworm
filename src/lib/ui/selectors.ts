@@ -3,7 +3,7 @@
  *
  * YouTube's DOM is not a public API. Keeping every lookup here means a rename
  * is a one-file fix and each consumer states intent (`findPlayerElement`,
- * `findSidebarPlayer`) instead of repeating a fragile selector chain. Lookup
+ * `findCaptionElements`) instead of repeating a fragile selector chain. Lookup
  * helpers preserve each consumer's historical preference order.
  *
  * Spec §8: selectors for the player, caption nodes, recommended column and
@@ -55,13 +55,6 @@ const PLAYER_LOOKUP = [
   PAGE_SELECTORS.video,
 ] as const;
 
-/** Player preference order for the sidebar layout (no Shorts-specific shell). */
-const SIDEBAR_PLAYER_LOOKUP = [
-  PAGE_SELECTORS.moviePlayer,
-  PAGE_SELECTORS.html5VideoPlayer,
-  PAGE_SELECTORS.video,
-] as const;
-
 /** First matching element for an ordered selector list, or null. */
 export function firstMatch(
   doc: Document,
@@ -77,11 +70,6 @@ export function firstMatch(
 /** The player the overlay/sidebar geometry should follow on this page. */
 export function findPlayerElement(doc: Document = document): Element | null {
   return firstMatch(doc, PLAYER_LOOKUP);
-}
-
-/** The player that determines sidebar theater/docked mode. */
-export function findSidebarPlayer(doc: Document = document): Element | null {
-  return firstMatch(doc, SIDEBAR_PLAYER_LOOKUP);
 }
 
 /** Every caption layer node currently in the page. */

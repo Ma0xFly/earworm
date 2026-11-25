@@ -24,7 +24,11 @@ import { findSecondarySlot, PAGE_SELECTORS } from '@/lib/ui/selectors';
 
 export const SIDEBAR_HOST_TAG = 'earworm-sidebar-host';
 
-/** Inline host styles; the shadow sheet's `:host` rule is the same contract. */
+/**
+ * Inline host styles. Geometry lives here, not in the shadow sheet: the
+ * compiled sheet's `:host` rule (`src/entrypoints/content/style.css`) only
+ * resets inheritance and sets the theme variables/font.
+ */
 const HOST_STYLE = [
   'display: block',
   'width: 100%',

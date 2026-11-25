@@ -435,7 +435,7 @@ describe('sidebar placement', () => {
     expect(screen.getByRole('button', { name: '关闭字幕侧栏' })).toBeInTheDocument();
   });
 
-  it('keeps the panel docked in theater mode when #secondary is available', async () => {
+  it('ignores the theater player class and stays docked when #secondary is available', async () => {
     setViewportWidth(1440);
     addSecondaryWithInner();
     const player = document.createElement('div');

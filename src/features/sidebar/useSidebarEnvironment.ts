@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { findSidebarPlayer } from '@/lib/ui/selectors';
 import {
   readSidebarEnvironment,
   sameSidebarEnvironment,
@@ -13,9 +12,9 @@ const REFRESH_DELAYS_MS = [250, 1000, 2500] as const;
  *
  * YouTube mounts the watch-page layout asynchronously after SPA navigation, so
  * besides the immediate resize/fullscreen/navigation events we re-read the
- * environment a few times after mount. Theater mode only toggles a class on
- * the player, which is watched directly (a body-wide MutationObserver would
- * fire constantly on YouTube).
+ * environment a few times after mount. The mode only depends on `#secondary`
+ * availability and fullscreen, so no DOM mutation observer is needed (and a
+ * body-wide one would fire constantly on YouTube).
  */
 export function useSidebarEnvironment(doc: Document = document): SidebarEnvironment {
   const [environment, setEnvironment] = useState<SidebarEnvironment>(() =>
@@ -24,8 +23,6 @@ export function useSidebarEnvironment(doc: Document = document): SidebarEnvironm
 
   useEffect(() => {
     let disposed = false;
-    let observedPlayer: Element | null = null;
-    let classObserver: MutationObserver | null = null;
     let refreshTimers: Array<ReturnType<typeof setTimeout>> = [];
 
     const update = (): void => {
@@ -34,21 +31,6 @@ export function useSidebarEnvironment(doc: Document = document): SidebarEnvironm
       setEnvironment((previous) =>
         sameSidebarEnvironment(previous, next) ? previous : next,
       );
-    };
-
-    const watchPlayer = (): void => {
-      const player = findSidebarPlayer(doc);
-      if (player === observedPlayer) return;
-      observedPlayer = player;
-      classObserver?.disconnect();
-      classObserver =
-        player && typeof MutationObserver !== 'undefined'
-          ? new MutationObserver(update)
-          : null;
-      classObserver?.observe(player as Element, {
-        attributes: true,
-        attributeFilter: ['class'],
-      });
     };
 
     const clearRefreshTimers = (): void => {
@@ -64,7 +46,6 @@ export function useSidebarEnvironment(doc: Document = document): SidebarEnvironm
     };
 
     const onPageChange = (): void => {
-      watchPlayer();
       update();
       scheduleRefresh();
     };
@@ -75,7 +56,6 @@ export function useSidebarEnvironment(doc: Document = document): SidebarEnvironm
     doc.addEventListener('yt-navigate-finish', onPageChange);
     doc.addEventListener('yt-page-data-updated', onPageChange);
 
-    watchPlayer();
     update();
     scheduleRefresh();
 
@@ -86,8 +66,6 @@ export function useSidebarEnvironment(doc: Document = document): SidebarEnvironm
       doc.removeEventListener('yt-navigate-finish', onPageChange);
       doc.removeEventListener('yt-page-data-updated', onPageChange);
       clearRefreshTimers();
-      classObserver?.disconnect();
-      observedPlayer = null;
     };
   }, [doc]);
 

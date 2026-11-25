@@ -6,7 +6,6 @@ import {
   PLAYER_DOM_ID,
   findCaptionElements,
   findPlayerElement,
-  findSidebarPlayer,
   firstMatch,
 } from '@/lib/ui/selectors';
 
@@ -62,22 +61,6 @@ describe('selector lookup helpers', () => {
 
     const movie = append('div', { id: 'movie_player' });
     expect(findPlayerElement(document)).toBe(movie);
-  });
-
-  it('keeps the sidebar player preference order (no Shorts shell)', () => {
-    const video = append('video');
-    expect(findSidebarPlayer(document)).toBe(video);
-
-    const playerClass = append('div', { class: 'html5-video-player' });
-    expect(findSidebarPlayer(document)).toBe(playerClass);
-
-    const movie = append('div', { id: 'movie_player' });
-    expect(findSidebarPlayer(document)).toBe(movie);
-
-    // A Shorts shell alone is not what the watch-page sidebar measures.
-    document.body.innerHTML = '';
-    append('div', { id: 'shorts-player' });
-    expect(findSidebarPlayer(document)).toBeNull();
   });
 
   it('finds every caption layer node', () => {

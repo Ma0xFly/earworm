@@ -6,10 +6,7 @@
  * rules stay unit-testable without a browser.
  */
 import type { CSSProperties } from 'react';
-import { findSidebarPlayer, PAGE_SELECTORS } from '@/lib/ui/selectors';
-
-/** Class YouTube puts on the player in theater (large-width) mode. */
-export const THEATER_CLASS = 'ytp-large-width-mode';
+import { PAGE_SELECTORS } from '@/lib/ui/selectors';
 
 /** Fallback viewport width when the document reports none (SSR/tests). */
 const FALLBACK_VIEWPORT_WIDTH = 1200;
@@ -41,10 +38,8 @@ export type SidebarMode = 'docked' | 'drawer';
 export type SidebarEnvironment = {
   /** `#secondary` exists and has a measured, usable width. */
   hasSecondary: boolean;
-  secondaryWidth: number | null;
   viewportWidth: number;
   fullscreen: boolean;
-  theater: boolean;
 };
 
 export type SidebarLayout = {
@@ -65,17 +60,11 @@ export function readSidebarEnvironment(doc: Document = document): SidebarEnviron
   const secondaryWidth = secondary
     ? Math.round(secondary.getBoundingClientRect().width)
     : 0;
-  const usableSecondaryWidth =
-    secondaryWidth >= MIN_SECONDARY_WIDTH ? secondaryWidth : null;
-  const player = findSidebarPlayer(doc);
-  const viewportWidth = doc.defaultView?.innerWidth ?? 0;
 
   return {
-    hasSecondary: usableSecondaryWidth !== null,
-    secondaryWidth: usableSecondaryWidth,
-    viewportWidth,
+    hasSecondary: secondaryWidth >= MIN_SECONDARY_WIDTH,
+    viewportWidth: doc.defaultView?.innerWidth ?? 0,
     fullscreen: Boolean(doc.fullscreenElement),
-    theater: player?.classList.contains(THEATER_CLASS) ?? false,
   };
 }
 
@@ -85,10 +74,8 @@ export function sameSidebarEnvironment(
 ): boolean {
   return (
     a.hasSecondary === b.hasSecondary &&
-    a.secondaryWidth === b.secondaryWidth &&
     a.viewportWidth === b.viewportWidth &&
-    a.fullscreen === b.fullscreen &&
-    a.theater === b.theater
+    a.fullscreen === b.fullscreen
   );
 }
 
@@ -99,10 +86,12 @@ export function sameSidebarEnvironment(
  *   height with an internal scrolling list, no `position: fixed/sticky`, so
  *   recommended videos sit below it and the panel scrolls with the page;
  * - fullscreen or no usable column: a fixed right drawer whose vertical
- *   geometry comes from T1's `--ew-player-*` variables;
- * - theater no longer forces a drawer: it is docked whenever YouTube still
- *   exposes a usable column. Narrow viewports fall back naturally, because
- *   YouTube hides `#secondary` (zero width) there.
+ *   geometry comes from T1's `--ew-player-*` variables.
+ *
+ * Only `#secondary` availability and fullscreen decide the mode. Player
+ * classes (including theater/large-width mode) are deliberately not measured:
+ * theater keeps layout experiments off `#secondary`, and a zero-width hidden
+ * column already falls back to the drawer on narrow viewports.
  */
 export function computeSidebarLayout(env: SidebarEnvironment): SidebarLayout {
   const drawer = env.fullscreen || !env.hasSecondary;
