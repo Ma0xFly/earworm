@@ -35,3 +35,11 @@ _Avoid_: 词库、生词本、单词本
 **逐句暂停 (Auto-pause)**:
 播放到每句句尾自动暂停的默认播放模式，与连续播放（导航只跳转不暂停）相对。
 _Avoid_: 自动停、单句模式
+
+**人工字幕 (Manual Track)**:
+创作者上传的英文字幕轨，earworm 的首选来源。
+_Avoid_: 官方字幕（歧义：自动字幕也是 YouTube 官方提供）
+
+**自动字幕 (ASR Track)**:
+YouTube 语音识别自动生成的英文字幕轨（kind=asr），无人工轨时的兜底来源，与 Language Reactor 同源。
+_Avoid_: 机字幕、非官方字幕
