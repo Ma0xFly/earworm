@@ -10,7 +10,7 @@ function setVideo(videoId: string): void {
   window.history.replaceState({}, '', videoId ? `/watch?v=${videoId}` : '/');
 }
 
-function validCues(videoId: string): InjectEnvelope {
+function validCues(videoId: string, kind: 'manual' | 'asr' = 'manual'): InjectEnvelope {
   return {
     __earworm: true,
     dir: 'inject-to-content',
@@ -18,7 +18,7 @@ function validCues(videoId: string): InjectEnvelope {
     payload: {
       videoId,
       lang: 'en',
-      kind: 'manual',
+      kind,
       cues: [{ start: 0, end: 2, text: 'Hello' }],
     },
   };
@@ -101,6 +101,20 @@ describe('startTranscriptClient', () => {
       videoId: 'vid1',
       lang: 'en',
       kind: 'manual',
+      cues: [{ start: 0, end: 2, text: 'Hello' }],
+    });
+  });
+
+  it('delivers a validated automatic (ASR) cue track', () => {
+    const onTrack = vi.fn<(track: CueTrack) => void>();
+    start({ onTrack, onFailure: vi.fn() });
+
+    dispatchMessage(validCues('vid1', 'asr'));
+
+    expect(onTrack).toHaveBeenCalledWith({
+      videoId: 'vid1',
+      lang: 'en',
+      kind: 'asr',
       cues: [{ start: 0, end: 2, text: 'Hello' }],
     });
   });
