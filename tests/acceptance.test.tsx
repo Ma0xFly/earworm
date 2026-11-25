@@ -85,7 +85,7 @@ const CUES: Cue[] = [
 
 const HEADER = `
   <div id="movie_player"><div class="ytp-chrome-bottom"></div></div>
-  <div id="secondary"></div>
+  <div id="secondary"><div id="secondary-inner"><div data-recommended></div></div></div>
 `;
 
 function translationFor(index: number, text: string): LlmSentenceResult {
@@ -169,9 +169,29 @@ function installRuntime(): RuntimeHarness {
 
 let mounted: MountedContentApp | null = null;
 
+/** The document-flow host inserted into the recommended-videos column. */
+function sidebarHost(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('earworm-sidebar-host');
+}
+
+/**
+ * Where the sentence list currently renders: the nested sidebar shadow root
+ * when the right column is available, otherwise the body-level shadow root.
+ */
+function sidebarRoot(app: MountedContentApp): ParentNode {
+  return sidebarHost()?.shadowRoot ?? app.ui.container;
+}
+
+function sidebarQuery<T extends Element>(
+  app: MountedContentApp,
+  selector: string,
+): T | null {
+  return sidebarRoot(app).querySelector<T>(selector);
+}
+
 function rowsOf(app: MountedContentApp): HTMLElement[] {
   return Array.from(
-    app.ui.container.querySelectorAll<HTMLElement>('[data-sentence-id]'),
+    sidebarRoot(app).querySelectorAll<HTMLElement>('[data-sentence-id]'),
   );
 }
 
@@ -192,6 +212,23 @@ async function mountApp(): Promise<{
   app: MountedContentApp;
   video: FakeVideo;
 }> {
+  // happy-dom has no layout: give the recommended column a real watch-page
+  // width so the docked (document-flow) placement is exercised.
+  const secondary = document.querySelector<HTMLElement>('#secondary');
+  if (secondary) {
+    secondary.getBoundingClientRect = () =>
+      ({
+        x: 1016,
+        y: 120,
+        top: 120,
+        left: 1016,
+        right: 1416,
+        bottom: 900,
+        width: 400,
+        height: 780,
+      }) as DOMRect;
+  }
+
   let app!: MountedContentApp;
   await act(async () => {
     app = mountContentApp({ css: '' });
@@ -338,6 +375,18 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     await deliverCues();
     await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
 
+    // Spec F2 (§7.1): the panel is the first child of the right column, in
+    // document flow, so the recommended videos are pushed below it.
+    const host = sidebarHost();
+    const inner = document.querySelector('#secondary-inner');
+    expect(host).not.toBeNull();
+    expect(inner?.firstElementChild).toBe(host);
+    expect(inner?.children[1]).toHaveAttribute('data-recommended');
+    const dockedPanel = sidebarQuery<HTMLElement>(app, '[data-earworm-sidebar]');
+    expect(dockedPanel).toHaveAttribute('data-mode', 'docked');
+    expect(dockedPanel?.style.position).toBe('');
+    expect(dockedPanel?.style.width).toBe('100%');
+
     // T2 merged "Hello" + "there." into one sentence.
     expect(rowsOf(app)[0]?.textContent).toContain('Hello there.');
     expect(rowsOf(app)[1]?.textContent).toContain('I give up.');
@@ -417,9 +466,7 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
 
     // The sidebar's continuous toggle flips the payload to pauseAtEnd:false.
     const continuous = await waitFor(() => {
-      const element = app.ui.container.querySelector<HTMLElement>(
-        '[aria-label="连续播放"]',
-      );
+      const element = sidebarQuery<HTMLElement>(app, '[aria-label="连续播放"]');
       expect(element).not.toBeNull();
       return element!;
     });
@@ -462,6 +509,8 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
     await waitFor(() => expect(overlayLine(app, 'zh')?.textContent).toBe('你好。'));
 
     const root = app.ui.container.querySelector<HTMLElement>('[data-earworm-root]')!;
+    const host = sidebarHost();
+    expect(host).not.toBeNull();
     const enSwitch = await waitFor(() => {
       const element = app.ui.container.querySelector<HTMLElement>(
         '[aria-label="模糊英文"]',
@@ -478,6 +527,16 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       expect(root).toHaveAttribute('data-blur-en', '1');
       expect(root).toHaveAttribute('data-blur-zh', '0');
     });
+    // The nested shadow root cannot see the app root's attributes: the docked
+    // host mirrors them so `:host([data-blur-en="1"])` keeps the sidebar in sync.
+    // (happy-dom does not invalidate `:host`-rooted computed styles for deep
+    // descendants, so the nested blur is asserted on the host attributes +
+    // injected sheet here and in sidebar.test.tsx.)
+    await waitFor(() => expect(host).toHaveAttribute('data-blur-en', '1'));
+    expect(host).toHaveAttribute('data-blur-zh', '0');
+    expect(
+      host?.shadowRoot?.querySelector('style[data-earworm-style]')?.textContent,
+    ).toContain(':host([data-blur-zh="1"]) [data-lang="zh"]');
 
     const enText = overlayLine(app, 'en')?.querySelector('[data-lang="en"]');
     expect(enText).not.toBeNull();
@@ -492,6 +551,7 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       expect(root).toHaveAttribute('data-blur-en', '1');
       expect(root).toHaveAttribute('data-blur-zh', '1');
     });
+    await waitFor(() => expect(host).toHaveAttribute('data-blur-zh', '1'));
     // Re-query: the toggle re-render may replace the overlay line node.
     const zhBlurred = overlayLine(app, 'zh');
     expect(zhBlurred).not.toBeNull();
@@ -534,6 +594,61 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
       'llm',
     );
     expect(card?.querySelector('[data-ew-dict-note]')?.textContent).toBe('放弃');
+  });
+
+  it('opens the dictionary popup for a word clicked inside the docked sidebar', async () => {
+    const { app } = await mountApp();
+    await deliverCues();
+    await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
+
+    const word = await waitFor(() => {
+      const element = sidebarQuery<HTMLElement>(
+        app,
+        '[data-sentence-id="1"] [data-word="give"]',
+      );
+      expect(element).not.toBeNull();
+      return element!;
+    });
+    fireEvent.click(word);
+
+    // The card still renders in the body-level root's portal container: clicking
+    // a word in the nested shadow tree must not lose the Radix portal.
+    await waitFor(() => {
+      const card = app.ui.portalContainer.querySelector('[data-earworm-dictionary]');
+      expect(card).not.toBeNull();
+      expect(card).toHaveAttribute('data-state', 'ready');
+    });
+    expect(
+      app.ui.portalContainer.querySelector('[data-ew-dict-headword]')?.textContent,
+    ).toBe('give');
+  });
+
+  it('keeps the docked sidebar in a replaced recommended column', async () => {
+    const { app } = await mountApp();
+    await deliverCues();
+    await waitFor(() => expect(rowsOf(app)).toHaveLength(2));
+
+    const host = sidebarHost();
+    const secondary = document.querySelector('#secondary')!;
+    const newInner = document.createElement('div');
+    newInner.id = 'secondary-inner';
+    const recommended = document.createElement('div');
+    recommended.setAttribute('data-recommended', '');
+    newInner.appendChild(recommended);
+    secondary.replaceChildren(newInner);
+
+    await act(async () => {
+      document.dispatchEvent(new Event('yt-navigate-finish'));
+    });
+
+    await waitFor(() => expect(newInner.firstElementChild).toBe(sidebarHost()));
+    expect(sidebarHost()).toBe(host);
+    expect(newInner.children[1]).toBe(recommended);
+    expect(rowsOf(app)).toHaveLength(2);
+    expect(sidebarQuery(app, '[data-earworm-sidebar]')).toHaveAttribute(
+      'data-mode',
+      'docked',
+    );
   });
 
   it('shows 无字幕 without requesting translation and leaves playback alone', async () => {
@@ -594,6 +709,7 @@ describe('acceptance: cue → sentence → highlight → translation → UI', ()
 
     act(() => unmountContentApp());
     mounted = null;
+    expect(sidebarHost()).toBeNull();
 
     const second = await mountApp();
     await deliverCues();

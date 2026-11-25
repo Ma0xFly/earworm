@@ -5,6 +5,7 @@ import {
   startPlayerRectSync,
   type ShadowUi,
 } from '@/lib/ui/shadow';
+import { ShadowCssProvider } from '@/lib/ui/shadow-css';
 import { AppProviders } from './providers';
 import { ContentApp } from './ContentApp';
 
@@ -33,7 +34,15 @@ export function mountContentApp(options: MountContentAppOptions): MountedContent
 
   const reactRoot = createRoot(ui.container);
   reactRoot.render(
-    createElement(AppProviders, { container: ui.portalContainer }, createElement(ContentApp)),
+    createElement(
+      ShadowCssProvider,
+      { css: options.css },
+      createElement(
+        AppProviders,
+        { container: ui.portalContainer },
+        createElement(ContentApp),
+      ),
+    ),
   );
 
   const stopRectSync = startPlayerRectSync(ui.host);

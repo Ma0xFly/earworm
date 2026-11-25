@@ -81,17 +81,32 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
 自动证据（`pnpm vitest run tests/acceptance.test.tsx`）：
 
 - `merges cues, shows offline spans before translation, then bilingual overlay + sidebar`
-  —— 注入 cues → 合并成句 → 侧栏/overlay 双语，侧栏行内含 `data-collocation` 高亮。
-- `opens the dictionary popup for a clicked word with its collocation card` —— 点词链路。
+  —— 注入 cues → 合并成句 → 侧栏/overlay 双语，侧栏行内含 `data-collocation` 高亮；
+  同时断言侧栏宿主是 `#secondary-inner` 的首个子节点、推荐视频在其后、面板为
+  `data-mode="docked"` 且无 `position: fixed`。
+- `opens the dictionary popup for a word clicked inside the docked sidebar`
+  —— 嵌套 shadow root 内点词仍打开主 shadow root 的词典弹窗。
+- `keeps the docked sidebar in a replaced recommended column`
+  —— 右栏重建后宿主重新插入新列首位。
 - `resets and re-acquires on YouTube SPA navigation` —— SPA 切换后侧栏重建。
+- `src/features/sidebar/sidebar.test.tsx` 的 `sidebar placement`
+  —— 宿主插入位置、面板 `56vh`（320–560px）定高、列表 `overflow-y-auto` 独立滚动、
+  折叠后宿主移除/推荐视频上移、全屏转抽屉、blur 属性同步到宿主。
 
 手工步骤：
 
 1. 打开主视频，播放 10 秒后暂停。
-2. 侧栏应出现逐句列表：英文 + 中文，两行都可见；中文未返回时显示「翻译中…」。
-3. 当前句随播放高亮（琥珀色左边框），列表自动滚动。
-4. 点击第 5 句，视频应跳到该句开头并继续播放。
-5. 搭配（如视频中出现 `give up`、`look forward to`）在侧栏与 overlay 中有底色高亮。
+2. 侧栏应插入右栏文档流顶部（`#secondary` 区域），推荐视频位于面板**下方**，
+   不覆盖、不悬浮。
+3. 页面下滑时侧栏随页面正常滚走（不是 fixed/sticky 悬浮）；面板内列表独立滚动，
+   当前句高亮随播放自动滚动，滚动列表不应带动整页。
+4. 侧栏应出现逐句列表：英文 + 中文，两行都可见；中文未返回时显示「翻译中…」。
+5. 当前句随播放高亮（琥珀色左边框），列表自动滚动。
+6. 点击第 5 句，视频应跳到该句开头并继续播放。
+7. 搭配（如视频中出现 `give up`、`look forward to`）在侧栏与 overlay 中有底色高亮。
+8. 点右上「收起字幕侧栏」：面板消失、推荐视频上移；浮出的「字幕」按钮可重新展开。
+9. 进入全屏：侧栏转为右侧抽屉；退出全屏后回到右栏文档流。
+10. 切换视频（SPA）：侧栏应出现在新视频的右栏顶部，不残留旧视频句子。
 
 实际结果：____________________
 
@@ -148,7 +163,9 @@ pnpm exec vite build --config playground/vite.config.ts    # playground 单独�
 
 自动证据：`toggles English and Chinese blur independently through the shadow UI`
 —— 两个开关独立切换根节点 `data-blur-en/zh`，英文文本 computed `filter: blur(5px)`，
-中文独立；CSS 同时匹配 overlay 与侧栏的 `[data-lang]`。
+中文独立；同时断言右栏嵌套宿主的 `data-blur-en/zh` 与开关同步，嵌套样式表包含
+`:host([data-blur-en="1"]) [data-lang="en"]` 规则（overlay 与侧栏共用 `[data-lang]`）。
+嵌套树内的实际 computed style 受 happy-dom 限制，需手工确认。
 
 手工步骤：
 
@@ -257,8 +274,11 @@ overlay 显示「字幕获取失败」并可点「重试」。
 
 | 场景 | 预期 | 实际结果 |
 | --- | --- | --- |
-| YouTube SPA：首页 → 视频 → 另一个视频 | 旧字幕不残留；新视频重新载入；无重复 overlay | ______ |
-| 关闭再打开侧栏 | 开关状态持久化；列表恢复 | ______ |
+| YouTube SPA：首页 → 视频 → 另一个视频 | 旧字幕不残留；新视频重新载入；无重复 overlay；侧栏宿主重插新 `#secondary-inner` 首位 | ______ |
+| 右栏整体重建（推荐视频刷新） | `earworm-sidebar-host` 仍在当前列首位，推荐视频在面板下方，不出现重复面板 | ______ |
+| 关闭再打开侧栏 | 开关状态持久化；宿主移除后推荐视频上移；重开后列表恢复 | ______ |
+| 剧场模式 | 右栏可用时侧栏仍嵌在文档流（不再强制抽屉）；右栏被 YouTube 隐藏时自然转抽屉 | ______ |
+| 进入 / 退出全屏 | 进入全屏转右侧抽屉并移走嵌套宿主；退出后回到右栏文档流 | ______ |
 | 扩展重新加载（chrome://extensions） | 页面需刷新；刷新后正常挂载，无重复 shadow root | ______ |
 | 视频无中文译文（LLM 失败） | 英文仍显示；失败句可单句重试；其余句不受影响 | ______ |
 | Shorts（可选） | overlay 在 18% 底部锚点，不被右侧按钮遮挡；退出 Shorts 恢复普通锚点 | ______ |
@@ -272,6 +292,13 @@ overlay 显示「字幕获取失败」并可点「重试」。
   非同源窗口消息；`tests/acceptance.test.tsx` 用真实 `postCuesReady` 生成 envelope 后
   以 `source: window` 派发，因此覆盖了真实校验逻辑与客户端，但不覆盖浏览器
   `postMessage` 传输本身（该传输由单测与真实手工验收覆盖）。
+- happy-dom 不实现布局与真实滚动：右栏侧栏的「文档流位置、推荐视频在其下方、
+  面板定高 + 列表独立滚动、页面下滑侧栏滚走、与 YouTube 列样式的贴合」只能由
+  DOM 结构/样式断言与本文手工步骤覆盖。宿主插入 `#secondary-inner` 首位、
+  SPA 重插、折叠/全屏切换、blur 属性同步有自动化断言。
+- happy-dom 对嵌套 shadow root 的 `:host([data-blur-*])` 属性变更不会使深层子树
+  的 computed style 失效；侧栏 blur 因此以「宿主属性 + 注入的 `:host` 选择器
+  CSS」断言，实际模糊效果需按 §7.5 手工确认。
 - 原生字幕 `aria-hidden`：测试只断言 DOM 属性与清理恢复，未用真实屏幕阅读器验证。
 - 屏上字幕兜底只在合成 DOM/定时器上测试，真实 YouTube 的 caption DOM 改版或
   虚拟化渲染未覆盖；限制见 §7.7.1。

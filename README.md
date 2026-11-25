@@ -9,7 +9,7 @@
 
 - **双语字幕**：英文原文 + 自有 LLM 中文翻译，叠加在播放器上；会话就绪时原生字幕层被视觉抑制，获取失败/无字幕时保留原生字幕。
 - **模糊**：英 / 中字幕可独立模糊，悬停临时看清。
-- **逐句列表**：页面右侧显示逐句双语列表，当前句高亮并自动滚动，点击跳转。
+- **逐句列表**：插入 YouTube 右栏（`#secondary`）文档流顶部，推荐视频被推到面板下方；面板定高、列表内部独立滚动，当前句高亮并自动滚动，点击跳转；页面下滑时随页面滚走，全屏时转为右侧抽屉。
 - **逐句播放**：`a` / `s` / `d` = 上一句 / 重复当前句 / 下一句；默认句尾暂停，可切换连续播放。
 - **点词词典**：点击字幕单词弹出音标、中文释义、词性与考试标签；命中搭配时显示搭配条目。
 - **搭配高亮**：离线 OpenSubtitles 二元表立即高亮，LLM 标注的搭配随后叠加。
@@ -39,8 +39,10 @@ pnpm typecheck && pnpm test && pnpm build
 node scripts/audit-attribution.mjs
 ```
 
-开发时 UI 全部渲染在一个 body 级 shadow root 中，与 YouTube 页面样式互相隔离；
-Tailwind 的 preflight 被刻意关闭（只引入 theme + utilities），避免重置宿主页面。
+开发时 UI 主要渲染在一个 body 级 shadow root 中，与 YouTube 页面样式互相隔离；
+右栏逐句侧栏使用第二个嵌套 shadow host（`<earworm-sidebar-host>`，插在
+`#secondary-inner` 文档流首位）以进入页面布局。Tailwind 的 preflight 被刻意关闭
+（只引入 theme + utilities），避免重置宿主页面。
 
 ### 加载未打包扩展
 

@@ -1,10 +1,19 @@
 /**
  * In-page bilingual sentence sidebar (F2).
  *
- * Rendered inside T1's body-level shadow root as a fixed panel, never inside
- * `#secondary-inner` (React would escape the shadow root). On a wide watch
- * page it occupies the recommended-videos column; elsewhere it becomes a
- * closable right drawer.
+ * The docked panel is inserted into YouTube's recommended-videos column as a
+ * document-flow block: `<earworm-sidebar-host>` is prepended to
+ * `#secondary-inner` (or `#secondary` when the inner column is absent), owns a
+ * nested open shadow root, and the panel is rendered into it through a React
+ * portal. The host is created by `./host` and kept in the current column by
+ * `./useSidebarHost` across SPA navigation. Recommended videos are pushed
+ * below the panel; the panel has a fixed height with its own scrolling list,
+ * so it never covers the page and scrolls away with it.
+ *
+ * When `#secondary` is unusable (narrow layout, hidden by YouTube) or the page
+ * is fullscreen, the sidebar falls back to the fixed right drawer rendered in
+ * the body-level shadow root. `settings.ui.sidebar=false` removes the host so
+ * the recommended videos move back up; a small persistent reopen control stays.
  *
  * Panel event isolation (stop player click/wheel/key bubbling) follows the
  * easysubs transcript panel.
@@ -15,20 +24,24 @@
  */
 import {
   useCallback,
+  useEffect,
   useRef,
   type CSSProperties,
   type ReactNode,
   type SyntheticEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { PanelRightClose, XIcon } from 'lucide-react';
 import { useSession, type TranslationProgress } from '@/features/session';
 import { useSettings } from '@/lib/settings';
+import { useShadowCss } from '@/lib/ui/shadow-css';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { SESSION_STATUS_TEXT } from '@/lib/ui/status-text';
 import { SentenceRow } from './SentenceRow';
 import { computeSidebarLayout } from './selectors';
 import { useSidebarEnvironment } from './useSidebarEnvironment';
+import { useSidebarHost } from './useSidebarHost';
 import { useAutoScroll } from './useAutoScroll';
 
 function stopPlayerEvent(event: SyntheticEvent): void {
@@ -85,10 +98,26 @@ export function Sidebar() {
   const { settings, set } = useSettings();
   const environment = useSidebarEnvironment();
   const layout = computeSidebarLayout(environment);
+  const css = useShadowCss();
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const visible = settings.ui.sidebar;
   const hasSentences = state.status === 'ready' && state.sentences.length > 0;
+  const docked = layout.mode === 'docked';
+  const host = useSidebarHost({
+    css,
+    enabled: docked && visible && state.status !== 'idle',
+  });
+
+  // The nested shadow root cannot see the app root's `data-blur-*` attributes,
+  // so mirror the current blur state onto the host element (NESTED_BLUR_CSS
+  // matches it with `:host([data-blur-en="1"])`).
+  useEffect(() => {
+    const node = host?.host;
+    if (!node) return;
+    node.setAttribute('data-blur-en', settings.blur.en ? '1' : '0');
+    node.setAttribute('data-blur-zh', settings.blur.zh ? '1' : '0');
+  }, [host, settings.blur.en, settings.blur.zh]);
 
   const toggleSidebar = useCallback((): void => {
     set({ ui: { sidebar: !settings.ui.sidebar } });
@@ -146,7 +175,7 @@ export function Sidebar() {
     layout.mode === 'drawer' && 'shadow-2xl',
   );
 
-  return (
+  const panel = (
     <aside
       data-earworm-sidebar
       data-mode={layout.mode}
@@ -268,4 +297,11 @@ export function Sidebar() {
       ) : null}
     </aside>
   );
+
+  // Docked: portal into the nested shadow root in `#secondary-inner`. Drawer:
+  // render in the body-level shadow root (the caller's React tree).
+  if (docked) {
+    return host ? createPortal(panel, host.container) : null;
+  }
+  return panel;
 }

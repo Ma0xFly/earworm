@@ -88,3 +88,14 @@ export function findSidebarPlayer(doc: Document = document): Element | null {
 export function findCaptionElements(doc: Document = document): Element[] {
   return Array.from(doc.querySelectorAll(CAPTION_SELECTOR));
 }
+
+/**
+ * Slot the docked sidebar is prepended to: the inner recommended-videos column
+ * first, the outer column as a fallback for layout experiments.
+ */
+export function findSecondarySlot(doc: Document = document): Element | null {
+  return (
+    doc.querySelector(PAGE_SELECTORS.secondaryInner) ??
+    doc.querySelector(PAGE_SELECTORS.secondary)
+  );
+}

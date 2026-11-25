@@ -12,6 +12,10 @@ import { Sidebar } from './Sidebar';
  * contracts. The session provider is a fixed no-op in this ticket (T13 owns
  * it), so tests supply the `useSession()` result directly; settings run for
  * real through `SettingsProvider` + the chrome storage mock.
+ *
+ * Docked mode renders through a portal into `<earworm-sidebar-host>`, which
+ * owns a nested shadow root inside YouTube's `#secondary-inner`; the query
+ * helpers below search the host's shadow tree as well as the main document.
  */
 const sessionMock = vi.hoisted(() => ({ api: null as unknown }));
 
@@ -74,8 +78,46 @@ async function renderSidebar(api: SessionApi) {
   return result as ReturnType<typeof render>;
 }
 
+/** The document-flow host inserted into the recommended-videos column. */
+function sidebarHost(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('earworm-sidebar-host');
+}
+
+function shadowQuery<T extends Element>(selector: string): T | null {
+  return sidebarHost()?.shadowRoot?.querySelector<T>(selector) ?? null;
+}
+
+/** Query inside the sidebar wherever it renders (main document or nested shadow). */
+function sidebarQuery<T extends Element>(selector: string): T | null {
+  return document.querySelector<T>(selector) ?? shadowQuery<T>(selector);
+}
+
+function sidebarQueryAll<T extends Element>(selector: string): T[] {
+  const host = sidebarHost();
+  return [
+    ...Array.from(document.querySelectorAll<T>(selector)),
+    ...(host?.shadowRoot ? Array.from(host.shadowRoot.querySelectorAll<T>(selector)) : []),
+  ];
+}
+
 function panel(): HTMLElement | null {
-  return document.querySelector('[data-earworm-sidebar]');
+  return sidebarQuery('[data-earworm-sidebar]');
+}
+
+function header(): HTMLElement | null {
+  return sidebarQuery('[data-sidebar-header]');
+}
+
+function sentenceList(): HTMLElement | null {
+  return sidebarQuery('[data-sentence-list]');
+}
+
+function sentenceRows(): HTMLElement[] {
+  return sidebarQueryAll('[data-sentence-id]');
+}
+
+function sentenceRow(id: number): HTMLElement | null {
+  return sidebarQuery(`[data-sentence-id="${id}"]`);
 }
 
 beforeEach(() => {
@@ -98,7 +140,7 @@ describe('sidebar sentence list', () => {
       }),
     );
 
-    const rows = document.querySelectorAll<HTMLElement>('[data-sentence-id]');
+    const rows = sentenceRows();
     expect(rows).toHaveLength(3);
     expect(rows[0]?.textContent).toContain('Hello there.');
     expect(rows[0]?.textContent).toContain('你好。');
@@ -114,8 +156,8 @@ describe('sidebar sentence list', () => {
     });
     await renderSidebar(api);
 
-    const rowOne = document.querySelector<HTMLElement>('[data-sentence-id="1"]');
-    const rowTwo = document.querySelector<HTMLElement>('[data-sentence-id="2"]');
+    const rowOne = sentenceRow(1);
+    const rowTwo = sentenceRow(2);
     expect(rowOne).not.toBeNull();
     expect(rowTwo).not.toBeNull();
 
@@ -141,7 +183,7 @@ describe('sidebar sentence list', () => {
     });
     await renderSidebar(api);
 
-    const failedRow = document.querySelector<HTMLElement>('[data-sentence-id="1"]');
+    const failedRow = sentenceRow(1);
     expect(failedRow?.textContent).toContain('翻译失败');
 
     const retry = within(failedRow as HTMLElement).getByRole('button', { name: /重试/ });
@@ -158,7 +200,7 @@ describe('sidebar sentence list', () => {
       }),
     );
 
-    const row = document.querySelector<HTMLElement>('[data-sentence-id="0"]');
+    const row = sentenceRow(0);
     expect(row?.textContent).toContain('翻译中');
   });
 });
@@ -171,19 +213,23 @@ describe('sidebar header', () => {
     });
     await renderSidebar(api);
 
-    const header = document.querySelector<HTMLElement>('[data-sidebar-header]');
-    expect(header).not.toBeNull();
-    expect(header?.textContent).toContain('12/40');
-    expect(header?.textContent).toContain('失败 3');
+    const panelHeader = header();
+    expect(panelHeader).not.toBeNull();
+    expect(panelHeader?.textContent).toContain('12/40');
+    expect(panelHeader?.textContent).toContain('失败 3');
 
-    fireEvent.click(within(header as HTMLElement).getByRole('button', { name: '全部重试' }));
+    fireEvent.click(
+      within(panelHeader as HTMLElement).getByRole('button', { name: '全部重试' }),
+    );
     expect(api.retryAll).toHaveBeenCalledTimes(1);
   });
 
   it('hides the retry-all action when nothing failed', async () => {
     await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
-    const header = document.querySelector<HTMLElement>('[data-sidebar-header]');
-    expect(within(header as HTMLElement).queryByRole('button', { name: '全部重试' })).toBeNull();
+    const panelHeader = header();
+    expect(
+      within(panelHeader as HTMLElement).queryByRole('button', { name: '全部重试' }),
+    ).toBeNull();
   });
 });
 
@@ -196,13 +242,13 @@ describe('sidebar states', () => {
   it('shows the no-captions state without rendering a list', async () => {
     await renderSidebar(makeSession({ status: 'no-captions', sentences: [] }));
     expect(panel()?.textContent).toContain('无字幕');
-    expect(document.querySelector('[data-sentence-id]')).toBeNull();
+    expect(sentenceRows()).toHaveLength(0);
   });
 
   it('shows the error state', async () => {
     await renderSidebar(makeSession({ status: 'error', error: 'boom' }));
     expect(panel()?.textContent).toContain('字幕获取失败');
-    expect(document.querySelector('[data-sentence-id]')).toBeNull();
+    expect(sentenceRows()).toHaveLength(0);
   });
 
   it('offers a retry that re-acquires captions in the error state', async () => {
@@ -218,7 +264,7 @@ describe('sidebar states', () => {
   it('shows an empty state when ready but no sentences exist', async () => {
     await renderSidebar(makeSession({ status: 'ready', sentences: [] }));
     expect(panel()?.textContent).toContain('暂无字幕');
-    expect(document.querySelector('[data-sentence-id]')).toBeNull();
+    expect(sentenceRows()).toHaveLength(0);
   });
 
   it('renders nothing before a session starts', async () => {
@@ -264,7 +310,7 @@ describe('sidebar visibility', () => {
   });
 });
 
-describe('sidebar drawer', () => {
+describe('sidebar placement', () => {
   function setViewportWidth(width: number): void {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   }
@@ -278,35 +324,87 @@ describe('sidebar drawer', () => {
     return secondary;
   }
 
-  it('aligns a fixed panel to the #secondary column on a wide watch page', async () => {
+  /** Recommended-videos column as YouTube builds it: #secondary > #secondary-inner. */
+  function addSecondaryWithInner(width = 400): {
+    secondary: HTMLElement;
+    inner: HTMLElement;
+    recommended: HTMLElement;
+  } {
+    const secondary = addSecondary(width);
+    const inner = document.createElement('div');
+    inner.id = 'secondary-inner';
+    const recommended = document.createElement('div');
+    recommended.setAttribute('data-recommended', '');
+    recommended.textContent = '推荐视频';
+    inner.appendChild(recommended);
+    secondary.appendChild(inner);
+    return { secondary, inner, recommended };
+  }
+
+  it('prepends a nested host to #secondary-inner and docks the panel in the document flow', async () => {
     setViewportWidth(1440);
-    addSecondary(400);
+    const { inner, recommended } = addSecondaryWithInner();
     await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
 
-    const root = panel();
-    expect(root).not.toBeNull();
-    expect(root).toHaveAttribute('data-mode', 'docked');
-    expect(root?.style.width).toBe('400px');
-    expect(root?.style.right).toBe('24px');
-    expect(root?.style.top).toBe('var(--ew-player-top)');
-    expect(root?.style.height).toBe('var(--ew-player-height)');
-    expect(screen.queryByRole('button', { name: '关闭字幕侧栏' })).toBeNull();
+    const host = sidebarHost();
+    expect(host).not.toBeNull();
+    expect(host?.parentElement).toBe(inner);
+    expect(inner.firstElementChild).toBe(host);
+    expect(inner.children[1]).toBe(recommended);
+    expect(host?.style.display).toBe('block');
+    expect(host?.style.width).toBe('100%');
+
+    const docked = panel();
+    expect(docked).not.toBeNull();
+    expect(docked).toHaveAttribute('data-mode', 'docked');
+    expect(docked?.style.position).toBe('');
+    expect(docked?.style.width).toBe('100%');
+    expect(docked?.style.height).toBe('56vh');
+    expect(docked?.style.minHeight).toBe('320px');
+    expect(docked?.style.maxHeight).toBe('560px');
+    expect(within(docked as HTMLElement).queryByRole('button', { name: '关闭字幕侧栏' })).toBeNull();
+
+    // The same compiled stylesheet is injected into the nested shadow root,
+    // including the host-attribute variant of the blur rules.
+    const style = host?.shadowRoot?.querySelector('style[data-earworm-style]');
+    expect(style).not.toBeNull();
+    expect(style?.textContent).toContain(':host([data-blur-en="1"]) [data-lang="en"]');
+  });
+
+  it('gives the docked panel a fixed height with its own scrolling list', async () => {
+    setViewportWidth(1440);
+    addSecondaryWithInner();
+    await renderSidebar(
+      makeSession({
+        sentences: [makeSentence(0, 'One.'), makeSentence(1, 'Two.')],
+      }),
+    );
+
+    const docked = panel();
+    expect(docked?.className).toContain('overflow-hidden');
+    const list = sentenceList();
+    expect(list).not.toBeNull();
+    expect(list?.className).toContain('overflow-y-auto');
+    expect(list?.className).toContain('overscroll-contain');
+    expect(docked?.contains(list as Node)).toBe(true);
   });
 
   it('falls back to a fixed drawer when #secondary does not exist', async () => {
     setViewportWidth(1440);
     await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
 
-    const root = panel();
-    expect(root).not.toBeNull();
-    expect(root).toHaveAttribute('data-mode', 'drawer');
-    expect(root?.style.right).toBe('24px');
+    expect(sidebarHost()).toBeNull();
+    const drawer = panel();
+    expect(drawer).not.toBeNull();
+    expect(drawer).toHaveAttribute('data-mode', 'drawer');
+    expect(drawer?.style.position).toBe('fixed');
+    expect(drawer?.style.right).toBe('24px');
     expect(screen.getByRole('button', { name: '关闭字幕侧栏' })).toBeInTheDocument();
   });
 
-  it('switches to a drawer in theater mode', async () => {
+  it('keeps the panel docked in theater mode when #secondary is available', async () => {
     setViewportWidth(1440);
-    addSecondary(400);
+    addSecondaryWithInner();
     const player = document.createElement('div');
     player.id = 'movie_player';
     player.classList.add('ytp-large-width-mode');
@@ -314,12 +412,13 @@ describe('sidebar drawer', () => {
 
     await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
 
-    expect(panel()).toHaveAttribute('data-mode', 'drawer');
+    expect(panel()).toHaveAttribute('data-mode', 'docked');
+    expect(sidebarHost()?.parentElement).toBe(document.querySelector('#secondary-inner'));
   });
 
   it('recomputes placement after SPA navigation', async () => {
     setViewportWidth(1440);
-    const secondary = addSecondary(400);
+    const { secondary } = addSecondaryWithInner();
     await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
     expect(panel()).toHaveAttribute('data-mode', 'docked');
 
@@ -329,11 +428,25 @@ describe('sidebar drawer', () => {
     });
 
     expect(panel()).toHaveAttribute('data-mode', 'drawer');
+    expect(sidebarHost()).toBeNull();
+  });
+
+  it('docks when YouTube mounts the recommended column after mount', async () => {
+    setViewportWidth(1440);
+    await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
+    expect(panel()).toHaveAttribute('data-mode', 'drawer');
+
+    const { inner } = addSecondaryWithInner();
+    await act(async () => {
+      document.dispatchEvent(new Event('yt-page-data-updated'));
+    });
+    await waitFor(() => expect(panel()).toHaveAttribute('data-mode', 'docked'));
+    expect(sidebarHost()?.parentElement).toBe(inner);
   });
 
   it('switches to a drawer in fullscreen and closes it', async () => {
     setViewportWidth(1440);
-    addSecondary(400);
+    addSecondaryWithInner();
     Object.defineProperty(document, 'fullscreenElement', {
       configurable: true,
       get: () => document.body,
@@ -341,6 +454,7 @@ describe('sidebar drawer', () => {
     try {
       await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
       expect(panel()).toHaveAttribute('data-mode', 'drawer');
+      expect(sidebarHost()).toBeNull();
 
       fireEvent.click(screen.getByRole('button', { name: '关闭字幕侧栏' }));
       await waitFor(() => expect(panel()).toBeNull());
@@ -350,6 +464,90 @@ describe('sidebar drawer', () => {
         get: () => null,
       });
     }
+  });
+
+  it('re-inserts the host after YouTube replaces #secondary-inner', async () => {
+    setViewportWidth(1440);
+    const { secondary, inner } = addSecondaryWithInner();
+    await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
+
+    const host = sidebarHost();
+    expect(inner.firstElementChild).toBe(host);
+
+    const newInner = document.createElement('div');
+    newInner.id = 'secondary-inner';
+    const newRecommended = document.createElement('div');
+    newRecommended.setAttribute('data-recommended', '');
+    newInner.appendChild(newRecommended);
+    secondary.replaceChildren(newInner);
+
+    await act(async () => {
+      document.dispatchEvent(new Event('yt-navigate-finish'));
+    });
+
+    expect(sidebarHost()).toBe(host);
+    expect(host?.parentElement).toBe(newInner);
+    expect(newInner.firstElementChild).toBe(host);
+    expect(newInner.children[1]).toBe(newRecommended);
+    expect(panel()).not.toBeNull();
+  });
+
+  it('re-inserts the host into a replacement #secondary column', async () => {
+    setViewportWidth(1440);
+    const { secondary } = addSecondaryWithInner();
+    await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
+
+    const host = sidebarHost();
+    expect(host).not.toBeNull();
+
+    const newSecondary = addSecondary(400);
+    const newInner = document.createElement('div');
+    newInner.id = 'secondary-inner';
+    newSecondary.appendChild(newInner);
+    secondary.remove();
+
+    await act(async () => {
+      document.dispatchEvent(new Event('yt-page-data-updated'));
+    });
+
+    expect(sidebarHost()).toBe(host);
+    expect(host?.parentElement).toBe(newInner);
+    expect(newInner.firstElementChild).toBe(host);
+  });
+
+  it('removes the host when collapsed so recommendations move up', async () => {
+    setViewportWidth(1440);
+    const { inner, recommended } = addSecondaryWithInner();
+    await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
+
+    expect(inner.firstElementChild).toBe(sidebarHost());
+
+    fireEvent.click(within(panel() as HTMLElement).getByRole('button', { name: '收起字幕侧栏' }));
+
+    await waitFor(() => expect(sidebarHost()).toBeNull());
+    expect(inner.firstElementChild).toBe(recommended);
+    expect(panel()).toBeNull();
+
+    const reopen = document.querySelector<HTMLElement>('[data-earworm-sidebar-reopen]');
+    fireEvent.click(reopen as HTMLElement);
+    await waitFor(() => expect(sidebarHost()?.parentElement).toBe(inner));
+    expect(panel()).toHaveAttribute('data-mode', 'docked');
+  });
+
+  it('mirrors the blur settings onto the nested host element', async () => {
+    seedStorage(SETTINGS_STORAGE_KEY, {
+      ...DEFAULT_SETTINGS,
+      blur: { en: true, zh: false },
+      ui: { sidebar: true },
+    });
+    setViewportWidth(1440);
+    addSecondaryWithInner();
+    await renderSidebar(makeSession({ sentences: [makeSentence(0, 'One.')] }));
+
+    const host = sidebarHost();
+    expect(host).not.toBeNull();
+    await waitFor(() => expect(host).toHaveAttribute('data-blur-en', '1'));
+    expect(host).toHaveAttribute('data-blur-zh', '0');
   });
 });
 
@@ -409,7 +607,7 @@ describe('sidebar auto-scroll', () => {
     const sentences = makeSentences(30);
     await renderSidebar(makeSession({ sentences, currentIndex: 10 }));
 
-    const currentRow = document.querySelector('[data-sentence-id="10"]');
+    const currentRow = sentenceRow(10);
     expect(scrollSpy).toHaveBeenCalledTimes(1);
     expect(scrollSpy.mock.calls[0]?.[0]).toEqual({ block: 'center' });
     expect(scrollSpy.mock.contexts[0]).toBe(currentRow);
@@ -420,8 +618,8 @@ describe('sidebar auto-scroll', () => {
     const api = makeSession({ sentences, currentIndex: 10 });
     const view = await renderSidebar(api);
 
-    const list = document.querySelector<HTMLElement>('[data-sentence-list]');
-    const row = document.querySelector<HTMLElement>('[data-sentence-id="10"]');
+    const list = sentenceList();
+    const row = sentenceRow(10);
     expect(list).not.toBeNull();
     expect(row).not.toBeNull();
     mockRect(list as HTMLElement, { top: 0, height: 600 });
@@ -448,9 +646,7 @@ describe('sidebar auto-scroll', () => {
     });
     expect(scrollSpy).toHaveBeenCalledTimes(1);
     expect(scrollSpy.mock.calls[0]?.[0]).toEqual({ block: 'center' });
-    expect(scrollSpy.mock.contexts[0]).toBe(
-      document.querySelector('[data-sentence-id="11"]'),
-    );
+    expect(scrollSpy.mock.contexts[0]).toBe(sentenceRow(11));
   });
 
   it('resumes immediately when a manual scroll leaves the current row in view', async () => {
@@ -458,8 +654,8 @@ describe('sidebar auto-scroll', () => {
     const api = makeSession({ sentences, currentIndex: 10 });
     const view = await renderSidebar(api);
 
-    const list = document.querySelector<HTMLElement>('[data-sentence-list]');
-    const row = document.querySelector<HTMLElement>('[data-sentence-id="10"]');
+    const list = sentenceList();
+    const row = sentenceRow(10);
     mockRect(list as HTMLElement, { top: 0, height: 600 });
     mockRect(row as HTMLElement, { top: 280, height: 40 });
 
@@ -474,8 +670,6 @@ describe('sidebar auto-scroll', () => {
     await rerenderSidebar(view);
 
     expect(scrollSpy).toHaveBeenCalledTimes(1);
-    expect(scrollSpy.mock.contexts[0]).toBe(
-      document.querySelector('[data-sentence-id="11"]'),
-    );
+    expect(scrollSpy.mock.contexts[0]).toBe(sentenceRow(11));
   });
 });
